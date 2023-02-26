@@ -1,4 +1,3 @@
-#include "void  hello_from_dyn_runtime_lib.h"
 #include <stdio.h>
 #include <dlfcn.h>
 #include <gnu/lib-names.h>
@@ -18,13 +17,13 @@ void load_lib_run_function(void) {
         printf("dlopen() failed: %s\n", dlerror());
         return;
     }
-
     dyn_print_hello = (void (*)(void)) dlsym(h, "hello_from_dynamic_lib");
 
-    error = dyn_print_hello();
-    if(error != nullptr) {
+    error = dlerror();
+    if(error != NULL) {
         printf("dlsyn() failed: %s\n", dlerror());
-        return;
+        dlclose(h);
+    return;
     }
     dyn_print_hello();
     dlclose(h);
@@ -34,6 +33,4 @@ int main(int argc, char* argv[]) {
     print_hello();
     hello_from_dyn_runtime_lib();
     load_lib_run_function();
-
-
 }
