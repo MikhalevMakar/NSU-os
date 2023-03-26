@@ -1,6 +1,12 @@
 #include <unistd.h>
+#include <stdlib.h>
+
+enum {
+    ERROR = -1,
+    STDOUT = 1
+};
 
 int main(void) {
-    int ret = write(1, "hello from write", 16);
-    return (ret == -1) ? -1 : 0;
+    int ret = write(STDOUT, "hello from write", 16);
+    return (ret == ERROR) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
