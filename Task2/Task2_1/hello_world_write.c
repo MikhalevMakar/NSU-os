@@ -7,6 +7,6 @@ enum {
 };
 
 int main(void) {
-    int ret = write(STDOUT, "hello from write", 16);
+    ssize_t ret = write(STDOUT, "hello from write", 16);
     return (ret == ERROR) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
