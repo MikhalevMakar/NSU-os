@@ -1,0 +1,1 @@
+CMakeLists.txt not found in /Users/natasamihaleva/NSU_OS/Task3 Select CMakeLists.txt
