@@ -58,14 +58,10 @@ void swap(char* sym_first, char* sym_second) {
 	*sym_second = sym_current;
 }
 
-void reverse_line(const char* file_name, char* rev_line) {
-    size_t len_file_name = strlen(file_name);
-
-    strncpy(rev_line, file_name, len_file_name);
-
-    int mid_len =  len_file_name / 2;
+void reverse_line(const char* line, const size_t size) {
+    int mid_len =  size / 2;
     for (int i = 0; i < mid_len; i++) {
-       swap(&rev_line[i], &rev_line[len_file_name - i - INCREASE_POS]);
+       swap(&line[i], &line[size - i - INCREASE_POS]);
     }
 }
 
@@ -113,16 +109,11 @@ ssize_t create_reverse_file(const char* input_path, const char* output_path) {
         size_t bytes_read = fread(buffer, 1, bytes_to_read, input_file);
         if (bytes_read == 0) {
             perror("failed to read input file");
-            fclose(input_file);
-            fclose(output_file);
+            close_files(2, input_file, output_file);
             return EXIT_FAILURE;
         }
 
-        for (int i = 0; i < bytes_read / 2; i++) {
-            char temp = buffer[i];
-            buffer[i] = buffer[bytes_read - i - 1];
-            buffer[bytes_read - i - 1] = temp;
-        }
+        reverse_line(buffer, bytes_read);
         bytes_left -= bytes_read;
 
         fseek(output_file, bytes_left, SEEK_SET);
@@ -166,14 +157,15 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
             path_new_folder = reallocation_memory(path_new_folder, relocation_size);
         }
 
-        reverse_line(d_entry->d_name, new_rev_folder);
+        strncpy(new_rev_folder, d_entry->d_name, strlen(d_entry->d_name));
+        reverse_line(new_rev_folder, strlen(new_rev_folder));
+
         sprintf(path_new_rev_folder, "%s/%s", path_reverse_folder, new_rev_folder);
         sprintf(path_new_folder, "%s/%s", path_origin_folder, d_entry->d_name);
 
         if (d_entry->d_type == DT_DIR && !is_curr_or_prev_dir(d_entry->d_name)) {
             ret = create_reverse_folder(path_new_folder, path_new_rev_folder);
         } else if (d_entry->d_type == DT_REG) {
-            printf("\n%s\n",path_new_rev_folder);
             ret = create_reverse_file(path_new_folder, path_new_rev_folder);
         }
 
@@ -226,7 +218,9 @@ ssize_t parse_command_line(int argc, char** argv) {
 
     for (int i = 1; i < argc; ++i) {
         find_name_folder(argv[i], &path_to_folder, &origin_folder);
-        reverse_line(origin_folder, rev_folder);
+
+        strncpy(rev_folder, origin_folder, strlen(origin_folder));
+        reverse_line(rev_folder, strlen(rev_folder));
         strcat(path_to_folder, rev_folder);
 
         if (create_reverse_folder(argv[i], path_to_folder) == ERROR) {
