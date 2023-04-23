@@ -1,19 +1,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
 #include <sys/stat.h>
 #include <stdarg.h>
 #include <stdbool.h>
 
-enum POS {
+enum pos {
     INCREASE_POS = 1,
     START_POS = 0
 };
 
-enum {
+enum constants {
     BUFFER_SIZE = 256,
     MAX_LEN_NAME_FILE = 256,
     ERROR = -1,
@@ -55,7 +54,6 @@ void reverse_line(char* line, const size_t size) {
 
 bool is_curr_or_prev_dir(char* dir) {
     return (strcmp(dir, ".") == 0 || strcmp(dir, "..") == 0);
-
 }
 
 void find_name_folder(const char* path_origin_folder, char** path_to_folder, char** new_folder) {
@@ -118,6 +116,24 @@ ssize_t create_reverse_file(const char* input_path, const char* output_path) {
 
 }
 
+bool is_correct_len_folder(char* name_rev_folder, char* path_new_rev_folder, char* path_new_origin_folder,
+                           const struct dirent* d_entry) {
+      if(strlen(d_entry->d_name) > MAX_LEN_NAME_FILE) {
+            ssize_t relocation_size = strlen(d_entry->d_name - MAX_LEN_NAME_FILE + INCREASE_POS);
+
+            name_rev_folder = (char*)realloc(name_rev_folder, relocation_size * sizeof(char));
+            path_new_rev_folder = (char*)realloc(path_new_rev_folder, relocation_size * sizeof(char));
+            path_new_origin_folder = (char*)realloc(path_new_origin_folder, relocation_size * sizeof(char));
+
+            if(name_rev_folder == NULL || path_new_rev_folder == NULL || path_new_origin_folder == NULL) {
+                 fprintf(stderr, "Error: failed to reallocate memory\n");
+                 override_free(3, name_rev_folder, path_new_rev_folder, path_new_origin_folder);
+                 return false;
+            }
+       }
+      return true;
+}
+
 ssize_t create_reverse_folder(const char*, const char*);
 
 ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_folder) {
@@ -143,23 +159,14 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
 
     while ((d_entry = readdir(dir)) != NULL) {
 
-        if(strlen(d_entry->d_name) > MAX_LEN_NAME_FILE) {
-            ssize_t relocation_size = strlen(d_entry->d_name - MAX_LEN_NAME_FILE + INCREASE_POS);
-
-            name_rev_folder = (char*)realloc(name_rev_folder, relocation_size * sizeof(char));
-            path_new_rev_folder = (char*)realloc(path_new_rev_folder, relocation_size * sizeof(char));
-            path_new_origin_folder = (char*)realloc(path_new_origin_folder, relocation_size * sizeof(char));
-
-            if(name_rev_folder == NULL ||
-               path_new_rev_folder == NULL ||
-               path_new_origin_folder == NULL) {
-                 fprintf(stderr, "Error: failed to reallocate memory\n");
-                 override_free(3, name_rev_folder, path_new_rev_folder, path_new_origin_folder);
-                 return ERROR;
-            }
+        if(!is_correct_len_folder(name_rev_folder,
+                                 path_new_rev_folder,
+                                 path_new_origin_folder,
+                                 d_entry)) {
+            return ERROR;
         }
 
-        strncpy(name_rev_folder, d_entry->d_name, strlen(d_entry->d_name));
+        name_rev_folder = strncpy(name_rev_folder, d_entry->d_name, strlen(d_entry->d_name));
         reverse_line(name_rev_folder, strlen(name_rev_folder));
 
         sprintf(path_new_rev_folder, "%s/%s", path_reverse_folder, name_rev_folder);
