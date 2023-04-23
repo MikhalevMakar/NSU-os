@@ -7,8 +7,6 @@
 #include <sys/stat.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <unistd.h>
-#include <signal.h>
 
 enum POS {
     INCREASE_POS = 1,
@@ -22,11 +20,13 @@ enum {
     MIN_NUMBER_CORRECT_ARGS = 2,
 };
 
-void freeing_memory(int count, ...) {
+void override_free(int count, ...) {
     va_list args;
     va_start(args, count);
     for (int i = 0; i < count; i++) {
-        free(va_arg(args, char*));
+        if(!va_arg(args, char*)) {
+            free(va_arg(args, char*));
+        }
     }
     va_end(args);
 }
@@ -40,25 +40,13 @@ void close_files(int count, ...) {
     va_end(args);
 }
 
-char* memory_allocation(size_t size) {
-    char* ptr = malloc(size);
-    assert(ptr);
-    return ptr;
-}
-
-char* reallocation_memory(const char* previous_ptr, size_t size) {
-    char* new_ptr = realloc(previous_ptr, size);
-    assert(new_ptr);
-    return new_ptr;
-}
-
 void swap(char* sym_first, char* sym_second) {
     char sym_current = *sym_first;
 	*sym_first = *sym_second;
 	*sym_second = sym_current;
 }
 
-void reverse_line(const char* line, const size_t size) {
+void reverse_line(char* line, const size_t size) {
     int mid_len =  size / 2;
     for (int i = 0; i < mid_len; i++) {
        swap(&line[i], &line[size - i - INCREASE_POS]);
@@ -72,7 +60,7 @@ bool is_curr_or_prev_dir(char* dir) {
 
 void find_name_folder(const char* path_origin_folder, char** path_to_folder, char** new_folder) {
     char* pos_slash = strrchr(path_origin_folder, '/');
-    *new_folder = (!pos_slash) ? path_origin_folder : pos_slash + INCREASE_POS;
+    *new_folder = (!pos_slash) ? (char*)path_origin_folder : pos_slash + INCREASE_POS;
 
     size_t folder_len = pos_slash ? (size_t)(pos_slash - path_origin_folder + INCREASE_POS) : START_POS;
 
@@ -83,13 +71,13 @@ void find_name_folder(const char* path_origin_folder, char** path_to_folder, cha
 }
 
 ssize_t create_reverse_file(const char* input_path, const char* output_path) {
-    FILE* input_file = fopen(input_path, "r");
+    FILE* input_file = fopen(input_path, "rb");
     if (!input_file) {
         perror("failed to open input file");
         return EXIT_FAILURE;
     }
 
-    FILE* output_file = fopen(output_path, "w");
+    FILE* output_file = fopen(output_path, "wb");
     if (!output_file) {
         close_files(1, input_file);
         perror("failed to open output file");
@@ -141,46 +129,61 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
          return ERROR;
     }
 
-    char* new_rev_folder = memory_allocation(MAX_LEN_NAME_FILE  * sizeof (char));
-    char* path_new_rev_folder = memory_allocation(MAX_LEN_NAME_FILE + strlen(path_reverse_folder) * sizeof(char));
-    char* path_new_folder = memory_allocation((MAX_LEN_NAME_FILE + strlen(path_origin_folder)) * sizeof(char));
+    char* name_rev_folder = (char*)malloc(MAX_LEN_NAME_FILE  * sizeof (char));
+    char* path_new_rev_folder = (char*)malloc(MAX_LEN_NAME_FILE + strlen(path_reverse_folder) * sizeof(char));
+    char* path_new_origin_folder = (char*)malloc((MAX_LEN_NAME_FILE + strlen(path_origin_folder)) * sizeof(char));
+    
+    if(name_rev_folder == NULL || path_new_rev_folder == NULL || path_new_origin_folder == NULL) {
+        fprintf(stderr, "Error: failed to reallocate memory\n");
+        override_free(3, name_rev_folder, path_new_rev_folder, path_new_origin_folder);
+        return ERROR;
+    }
 
     ssize_t ret = START_POS;
 
     while ((d_entry = readdir(dir)) != NULL) {
 
         if(strlen(d_entry->d_name) > MAX_LEN_NAME_FILE) {
-            ssize_t relocation_size = strlen((d_entry->d_name) - MAX_LEN_NAME_FILE + INCREASE_POS);
+            ssize_t relocation_size = strlen(d_entry->d_name - MAX_LEN_NAME_FILE + INCREASE_POS);
 
-            new_rev_folder = reallocation_memory(new_rev_folder, relocation_size);
-            path_new_rev_folder = reallocation_memory(path_reverse_folder, relocation_size);
-            path_new_folder = reallocation_memory(path_new_folder, relocation_size);
+            name_rev_folder = (char*)realloc(name_rev_folder, relocation_size * sizeof(char));
+            path_new_rev_folder = (char*)realloc(path_new_rev_folder, relocation_size * sizeof(char));
+            path_new_origin_folder = (char*)realloc(path_new_origin_folder, relocation_size * sizeof(char));
+
+            if(name_rev_folder == NULL ||
+               path_new_rev_folder == NULL ||
+               path_new_origin_folder == NULL) {
+                 fprintf(stderr, "Error: failed to reallocate memory\n");
+                 override_free(3, name_rev_folder, path_new_rev_folder, path_new_origin_folder);
+                 return ERROR;
+            }
         }
 
-        strncpy(new_rev_folder, d_entry->d_name, strlen(d_entry->d_name));
-        reverse_line(new_rev_folder, strlen(new_rev_folder));
+        strncpy(name_rev_folder, d_entry->d_name, strlen(d_entry->d_name));
+        reverse_line(name_rev_folder, strlen(name_rev_folder));
 
-        sprintf(path_new_rev_folder, "%s/%s", path_reverse_folder, new_rev_folder);
-        sprintf(path_new_folder, "%s/%s", path_origin_folder, d_entry->d_name);
+        sprintf(path_new_rev_folder, "%s/%s", path_reverse_folder, name_rev_folder);
+        sprintf(path_new_origin_folder, "%s/%s", path_origin_folder, d_entry->d_name);
 
         if (d_entry->d_type == DT_DIR && !is_curr_or_prev_dir(d_entry->d_name)) {
-            ret = create_reverse_folder(path_new_folder, path_new_rev_folder);
+            ret = create_reverse_folder(path_new_origin_folder, path_new_rev_folder);
         } else if (d_entry->d_type == DT_REG) {
-            ret = create_reverse_file(path_new_folder, path_new_rev_folder);
+            ret = create_reverse_file(path_new_origin_folder, path_new_rev_folder);
         }
 
         if (ret == ERROR ||
             !(d_entry->d_type == DT_DIR || d_entry->d_type == DT_REG)) {
-            freeing_memory(3, new_rev_folder, path_new_rev_folder, path_new_folder);
+            override_free(3, name_rev_folder, path_new_rev_folder, path_new_origin_folder);
             closedir(dir);
             return ERROR;
         }
-        memset(new_rev_folder, 0, strlen(path_new_folder) * sizeof(char));
-        memset(path_new_rev_folder, 0, strlen(path_new_folder) * sizeof(char));
-        memset(path_new_folder, 0, strlen(path_new_folder) * sizeof(char));
+
+        memset(name_rev_folder, 0, strlen(path_new_origin_folder) * sizeof(char));
+        memset(path_new_rev_folder, 0, strlen(path_new_origin_folder) * sizeof(char));
+        memset(path_new_origin_folder, 0, strlen(path_new_origin_folder) * sizeof(char));
     }
 
-    freeing_memory(3, new_rev_folder, path_new_rev_folder, path_new_folder);
+    override_free(3, name_rev_folder, path_new_rev_folder, path_new_origin_folder);
     closedir(dir);
     return EXIT_SUCCESS;
 }
@@ -212,8 +215,8 @@ ssize_t parse_command_line(int argc, char** argv) {
         return EXIT_FAILURE;
 
     size_t max_size = maximum_size_path(argc, argv);
-    char* rev_folder = memory_allocation(max_size * sizeof(char));
-    char* path_to_folder = memory_allocation(max_size * sizeof(char));
+    char* rev_folder = (char*)malloc(max_size * sizeof(char));
+    char* path_to_folder = (char*)malloc(max_size * sizeof(char));
     char* origin_folder = NULL;
 
     for (int i = 1; i < argc; ++i) {
@@ -224,12 +227,12 @@ ssize_t parse_command_line(int argc, char** argv) {
         strcat(path_to_folder, rev_folder);
 
         if (create_reverse_folder(argv[i], path_to_folder) == ERROR) {
-            freeing_memory(2, path_to_folder, rev_folder);
+            override_free(2, path_to_folder, rev_folder);
             return ERROR;
         }
     }
 
-    freeing_memory(2, path_to_folder, rev_folder);
+    override_free(2, path_to_folder, rev_folder);
     return EXIT_SUCCESS;
 }
 
