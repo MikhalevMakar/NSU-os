@@ -145,9 +145,9 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
     while ((d_entry = readdir(dir)) != NULL) {
 
         if(!is_correct_len_folder(name_rev_folder,
-                                 path_new_rev_folder,
-                                 path_new_origin_folder,
-                                 d_entry)) {
+                                  path_new_rev_folder,
+                                  path_new_origin_folder,
+                                    d_entry)) {
             return ERROR;
         }
 
