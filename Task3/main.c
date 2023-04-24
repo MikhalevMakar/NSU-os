@@ -4,7 +4,6 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <stdbool.h>
-#include <errno.h>
 
 enum pos {
     INCREASE_POS = 1,
@@ -49,6 +48,8 @@ void find_name_folder(char* path_origin_folder, char** path_to_folder, char** ne
 
 ssize_t create_reverse_file(const char* input_path, const char* output_path) {
     FILE* input_file = fopen(input_path, "rb");
+    ssize_t ret = 0;
+    
     if (!input_file) {
         perror("The input file was not opened");
         return EXIT_FAILURE;
@@ -62,9 +63,22 @@ ssize_t create_reverse_file(const char* input_path, const char* output_path) {
         return EXIT_FAILURE;
     }
 
-    fseek(input_file, 0, SEEK_END);
+    ret = fseek(input_file, 0, SEEK_END);
+    if(ret == ERROR) {
+        fclose(input_file);
+        fclose(output_file);
+        perror("Error in call fseek");
+        return ERROR;
+    }
+    
     long file_size = ftell(input_file);
-    fseek(input_file, 0, SEEK_SET);
+    ret = fseek(input_file, 0, SEEK_SET);
+    if(ret == ERROR) {
+        fclose(input_file);
+        fclose(output_file);
+        perror("Error in call fseek");
+        return ERROR;
+    }
 
     char buffer[BUFFER_SIZE];
     long bytes_left = file_size;
@@ -84,6 +98,7 @@ ssize_t create_reverse_file(const char* input_path, const char* output_path) {
         bytes_left -= bytes_read;
 
         fseek(output_file, bytes_left, SEEK_SET);
+        
         size_t bytes_written = fwrite(buffer, 1, bytes_read, output_file);
         if (bytes_written == 0) {
             perror("Error call write");
