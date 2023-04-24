@@ -35,7 +35,7 @@ bool is_curr_or_prev_dir(char* dir) {
         return (strcmp(dir, ".") == 0 || strcmp(dir, "..") == 0);
 }
 
-void find_name_folder(const char* path_origin_folder, char** path_to_folder, char** new_folder) {
+void find_name_folder(char* path_origin_folder, char** path_to_folder, char** new_folder) {
     char* pos_slash = strrchr(path_origin_folder, '/');
     *new_folder = (!pos_slash) ? (char*)path_origin_folder : pos_slash + INCREASE_POS;
 
@@ -44,21 +44,21 @@ void find_name_folder(const char* path_origin_folder, char** path_to_folder, cha
     strncpy(*path_to_folder, path_origin_folder, folder_len);
 
     if(!pos_slash)
-        strncpy(*path_to_folder, "./", sizeof("./"));
+        snprintf(*path_to_folder, sizeof(path_to_folder)+2, "%s", "./");
 }
 
 ssize_t create_reverse_file(const char* input_path, const char* output_path) {
     FILE* input_file = fopen(input_path, "rb");
     if (!input_file) {
-        perror("failed to open input file");
+        perror("The input file was not opened");
         return EXIT_FAILURE;
     }
 
     FILE* output_file = fopen(output_path, "wb");
     if (!output_file) {
+        perror("The output file was not opened");
         fclose(input_file);
         fclose(output_file);
-        perror("failed to open output file");
         return EXIT_FAILURE;
     }
 
@@ -86,7 +86,7 @@ ssize_t create_reverse_file(const char* input_path, const char* output_path) {
         fseek(output_file, bytes_left, SEEK_SET);
         size_t bytes_written = fwrite(buffer, 1, bytes_read, output_file);
         if (bytes_written == 0) {
-            perror("failed to write output file");
+            perror("Error call write");
             fclose(input_file);
             fclose(output_file);
             return ERROR;
@@ -125,7 +125,7 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
     struct dirent* d_entry;
 
     if ((dir = opendir(path_origin_folder)) == NULL) {
-         perror(path_origin_folder);
+         perror("The file was not opendir");
          return ERROR;
     }
 
@@ -160,8 +160,8 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
         int ret_origin = sprintf(path_new_origin_folder, "%s/%s", path_origin_folder, d_entry->d_name);
 
         if(ret_reverse < 0 || ret_origin < 0) {
-            perror(errno);
-            return ERROR
+            perror("Error call sprintf");
+            return ERROR;
         }
 
         if (d_entry->d_type == DT_DIR && !is_curr_or_prev_dir(d_entry->d_name)) {
@@ -195,8 +195,10 @@ ssize_t create_reverse_folder(const char* path_origin_folder,
                               const char* path_reverse_folder) {
 
     int ret = mkdir(path_reverse_folder, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    if(ret == ERROR)
+    if(ret == ERROR) {
+        perror("Error in calling mkdir");
         return ERROR;
+    }
 
     fill_folder(path_origin_folder, path_reverse_folder);
     return EXIT_SUCCESS;
