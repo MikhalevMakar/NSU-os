@@ -2,9 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <dirent.h>
-#include <errno.h>
 #include <sys/stat.h>
-#include <stdarg.h>
 #include <stdbool.h>
 
 enum pos {
@@ -18,26 +16,6 @@ enum constants {
     ERROR = -1,
     MIN_NUMBER_CORRECT_ARGS = 2,
 };
-
-void override_free(int count, ...) {
-    va_list args;
-    va_start(args, count);
-    for (int i = 0; i < count; i++) {
-        if(!va_arg(args, char*)) {
-            free(va_arg(args, char*));
-        }
-    }
-    va_end(args);
-}
-
-void close_files(int count, ...) {
-    va_list args;
-    va_start(args, count);
-    for (int i = 0; i < count; i++) {
-        fclose(va_arg(args, FILE*));
-    }
-    va_end(args);
-}
 
 void swap(char* sym_first, char* sym_second) {
     char sym_current = *sym_first;
@@ -53,11 +31,11 @@ void reverse_line(char* line, const size_t size) {
 }
 
 bool is_curr_or_prev_dir(char* dir) {
-    return (strcmp(dir, ".") == 0 || strcmp(dir, "..") == 0);
+        return (strcmp(dir, ".") == 0 || strcmp(dir, "..") == 0);
 }
 
 void find_name_folder(const char* path_origin_folder, char** path_to_folder, char** new_folder) {
-    char* pos_slash = strrchr(path_origin_folder, '/');
+    char* pos_slash = strrchr(path_origin_folder, '/'); // поиск первого вхождения символа
     *new_folder = (!pos_slash) ? (char*)path_origin_folder : pos_slash + INCREASE_POS;
 
     size_t folder_len = pos_slash ? (size_t)(pos_slash - path_origin_folder + INCREASE_POS) : START_POS;
@@ -77,7 +55,8 @@ ssize_t create_reverse_file(const char* input_path, const char* output_path) {
 
     FILE* output_file = fopen(output_path, "wb");
     if (!output_file) {
-        close_files(1, input_file);
+        fclose(input_file);
+        fclose(output_file);
         perror("failed to open output file");
         return EXIT_FAILURE;
     }
@@ -95,7 +74,8 @@ ssize_t create_reverse_file(const char* input_path, const char* output_path) {
         size_t bytes_read = fread(buffer, 1, bytes_to_read, input_file);
         if (bytes_read == 0) {
             perror("failed to read input file");
-            close_files(2, input_file, output_file);
+            fclose(input_file);
+            fclose(output_file);
             return EXIT_FAILURE;
         }
 
@@ -106,14 +86,15 @@ ssize_t create_reverse_file(const char* input_path, const char* output_path) {
         size_t bytes_written = fwrite(buffer, 1, bytes_read, output_file);
         if (bytes_written == 0) {
             perror("failed to write output file");
-            close_files(2, input_file, output_file);
+            fclose(input_file);
+            fclose(output_file);
             return ERROR;
         }
     }
 
-    close_files(2, input_file, output_file);
+    fclose(input_file);
+    fclose(output_file);
     return EXIT_SUCCESS;
-
 }
 
 bool is_correct_len_folder(char* name_rev_folder, char* path_new_rev_folder, char* path_new_origin_folder,
@@ -127,7 +108,9 @@ bool is_correct_len_folder(char* name_rev_folder, char* path_new_rev_folder, cha
 
             if(name_rev_folder == NULL || path_new_rev_folder == NULL || path_new_origin_folder == NULL) {
                  fprintf(stderr, "Error: failed to reallocate memory\n");
-                 override_free(3, name_rev_folder, path_new_rev_folder, path_new_origin_folder);
+                 free(name_rev_folder);
+                 free(path_new_rev_folder);
+                 free(path_new_origin_folder);
                  return false;
             }
        }
@@ -151,7 +134,9 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
     
     if(name_rev_folder == NULL || path_new_rev_folder == NULL || path_new_origin_folder == NULL) {
         fprintf(stderr, "Error: failed to reallocate memory\n");
-        override_free(3, name_rev_folder, path_new_rev_folder, path_new_origin_folder);
+        free(name_rev_folder);
+        free(path_new_rev_folder);
+        free(path_new_origin_folder);
         return ERROR;
     }
 
@@ -180,7 +165,9 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
 
         if (ret == ERROR ||
             !(d_entry->d_type == DT_DIR || d_entry->d_type == DT_REG)) {
-            override_free(3, name_rev_folder, path_new_rev_folder, path_new_origin_folder);
+            free(name_rev_folder);
+            free(path_new_rev_folder);
+            free(path_new_origin_folder);
             closedir(dir);
             return ERROR;
         }
@@ -190,7 +177,9 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
         memset(path_new_origin_folder, 0, strlen(path_new_origin_folder) * sizeof(char));
     }
 
-    override_free(3, name_rev_folder, path_new_rev_folder, path_new_origin_folder);
+    free(name_rev_folder);
+    free(path_new_rev_folder);
+    free(path_new_origin_folder);
     closedir(dir);
     return EXIT_SUCCESS;
 }
@@ -219,7 +208,7 @@ size_t maximum_size_path(int argc, char** argv) {
 ssize_t parse_command_line(int argc, char** argv) {
 
     if (argc < MIN_NUMBER_CORRECT_ARGS)
-        return EXIT_FAILURE;
+        return ERROR;
 
     size_t max_size = maximum_size_path(argc, argv);
     char* rev_folder = (char*)malloc(max_size * sizeof(char));
@@ -234,12 +223,14 @@ ssize_t parse_command_line(int argc, char** argv) {
         strcat(path_to_folder, rev_folder);
 
         if (create_reverse_folder(argv[i], path_to_folder) == ERROR) {
-            override_free(2, path_to_folder, rev_folder);
+            free(path_to_folder);
+            free(rev_folder);
             return ERROR;
         }
     }
 
-    override_free(2, path_to_folder, rev_folder);
+    free(path_to_folder);
+    free(rev_folder);
     return EXIT_SUCCESS;
 }
 
@@ -247,7 +238,7 @@ int main(int argc, char** argv) {
     ssize_t ret = parse_command_line(argc, argv);
 
     if (ret == ERROR) {
-        perror(strerror(errno));
+        fprintf(stderr, "Error: wrong number of arguments < MIN_NUMBER_CORRECT_ARGS = 2\n");
         return EXIT_FAILURE;
     }
 
