@@ -1,6 +1,7 @@
 #include <sys/syscall.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 
 enum {
     ERROR = -1,
@@ -15,8 +16,12 @@ static ssize_t my_write(const int _fd, void* _buf, const size_t _count) {
 
   asm("syscall");
 
-  register ssize_t ret_value   asm("eax");
+  register int ret_value   asm("eax");
 
+  if(ret_value < 0) {
+      errno = -ret_value;
+      return ERROR;
+  }
   return ret_value;
 }
 
