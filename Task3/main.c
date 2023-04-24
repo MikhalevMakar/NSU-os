@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <stdbool.h>
+#include <errno.h>
 
 enum pos {
     INCREASE_POS = 1,
@@ -147,15 +148,21 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
         if(!is_correct_len_folder(name_rev_folder,
                                   path_new_rev_folder,
                                   path_new_origin_folder,
-                                    d_entry)) {
+                                  d_entry)) {
             return ERROR;
         }
 
         name_rev_folder = strncpy(name_rev_folder, d_entry->d_name, strlen(d_entry->d_name));
         reverse_line(name_rev_folder, strlen(name_rev_folder));
 
-        sprintf(path_new_rev_folder, "%s/%s", path_reverse_folder, name_rev_folder);
-        sprintf(path_new_origin_folder, "%s/%s", path_origin_folder, d_entry->d_name);
+
+        int ret_reverse = sprintf(path_new_rev_folder, "%s/%s", path_reverse_folder, name_rev_folder);
+        int ret_origin = sprintf(path_new_origin_folder, "%s/%s", path_origin_folder, d_entry->d_name);
+
+        if(ret_reverse < 0 || ret_origin < 0) {
+            perror(errno);
+            return ERROR
+        }
 
         if (d_entry->d_type == DT_DIR && !is_curr_or_prev_dir(d_entry->d_name)) {
             ret = create_reverse_folder(path_new_origin_folder, path_new_rev_folder);
