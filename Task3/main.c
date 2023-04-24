@@ -35,7 +35,7 @@ bool is_curr_or_prev_dir(char* dir) {
 }
 
 void find_name_folder(const char* path_origin_folder, char** path_to_folder, char** new_folder) {
-    char* pos_slash = strrchr(path_origin_folder, '/'); // поиск первого вхождения символа
+    char* pos_slash = strrchr(path_origin_folder, '/');
     *new_folder = (!pos_slash) ? (char*)path_origin_folder : pos_slash + INCREASE_POS;
 
     size_t folder_len = pos_slash ? (size_t)(pos_slash - path_origin_folder + INCREASE_POS) : START_POS;
