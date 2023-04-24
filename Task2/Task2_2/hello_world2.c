@@ -15,7 +15,7 @@ static ssize_t my_write(const int _fd, void* _buf, const size_t _count) {
 
   asm("syscall");
 
-  register ssize_t ret_value   asm("rax");
+  register ssize_t ret_value   asm("eax");
 
   return ret_value;
 }
