@@ -4,6 +4,10 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <stdbool.h>
+<<<<<<< Updated upstream
+=======
+#include <stdarg.h>
+>>>>>>> Stashed changes
 
 enum pos {
     INCREASE_POS = 1,
@@ -15,14 +19,49 @@ enum constants {
     MAX_LEN_NAME_FILE = 256,
     ERROR = -1,
     MIN_NUMBER_CORRECT_ARGS = 2,
+    OK = 0
 };
 
+/// \param count
+/// \param ...
+/// \return void
+void override_free_memory(int count, ...) {
+    va_list args;
+    va_start(args, count);
+    for (int i = 0; i < count; i++) {
+        if(va_arg(args, char*) != NULL) {
+               free(va_arg(args, char*));
+        }
+    }
+    va_end(args);
+}
+///
+/// \param count
+/// \param ...
+/// \return void
+void override_close_files(int count, ...) {
+    va_list args;
+    va_start(args, count);
+    for (int i = 0; i < count; i++) {
+        FILE* file = va_arg(args, FILE*);
+        if (file != NULL) {
+            fclose(file);
+        }
+    }
+    va_end(args);
+}
+
+
+/// \param sym_first
+/// \param sym_second
 void swap(char* sym_first, char* sym_second) {
     char sym_current = *sym_first;
 	*sym_first = *sym_second;
 	*sym_second = sym_current;
 }
 
+/// \param line
+/// \param size
 void reverse_line(char* line, const size_t size) {
     int mid_len =  size / 2;
     for (int i = 0; i < mid_len; i++) {
@@ -30,24 +69,49 @@ void reverse_line(char* line, const size_t size) {
     }
 }
 
+/// \param dir
+/// \return bool
 bool is_curr_or_prev_dir(char* dir) {
         return (strcmp(dir, ".") == 0 || strcmp(dir, "..") == 0);
 }
 
+<<<<<<< Updated upstream
 void find_name_folder(char* path_origin_folder, char** path_to_folder, char** new_folder) {
+=======
+/// \param path_origin_folder
+/// \param path_to_folder
+/// \param new_folder
+/// \return STATUS ERROR/OK
+ssize_t find_name_folder(char* path_origin_folder, char** path_to_folder, char** new_folder) {
+>>>>>>> Stashed changes
     char* pos_slash = strrchr(path_origin_folder, '/');
     *new_folder = (!pos_slash) ? (char*)path_origin_folder : pos_slash + INCREASE_POS;
 
     size_t folder_len = pos_slash ? (size_t)(pos_slash - path_origin_folder + INCREASE_POS) : START_POS;
 
-    strncpy(*path_to_folder, path_origin_folder, folder_len);
+    *path_to_folder = strncpy(*path_to_folder, path_origin_folder, folder_len);
 
+<<<<<<< Updated upstream
     if(!pos_slash)
         snprintf(*path_to_folder, sizeof(path_to_folder)+2, "%s", "./");
+=======
+    if(!pos_slash) {
+        int ret = snprintf(*path_to_folder, sizeof(path_to_folder) + 2, "%s", "./");
+        if(ret == ERROR) {
+             perror("An error occurred while calling snprintf");
+             return ERROR;
+        }
+    }
+    return OK;
+>>>>>>> Stashed changes
 }
 
+/// \param input_path
+/// \param output_path
+/// \return STATUS ERROR/OK
 ssize_t create_reverse_file(const char* input_path, const char* output_path) {
     FILE* input_file = fopen(input_path, "rb");
+<<<<<<< Updated upstream
     ssize_t ret = 0;
     
     if (!input_file) {
@@ -71,12 +135,40 @@ ssize_t create_reverse_file(const char* input_path, const char* output_path) {
         return ERROR;
     }
     
+=======
+    ssize_t ret = OK;
+
+    if (input_file == NULL) {
+        perror("The input file was not opened");
+        return ERROR;
+    }
+
+    FILE* output_file = fopen(output_path, "wb");
+    if (output_file == NULL) {
+        perror("The output file was not opened");
+        fclose(input_file);
+        return ERROR;
+    }
+
+    ret = fseek(input_file, 0, SEEK_END);
+    if(ret == ERROR) {
+        fclose(input_file);
+        fclose(output_file);
+        perror("Error in call file seek");
+        return ERROR;
+    }
+
+>>>>>>> Stashed changes
     long file_size = ftell(input_file);
     ret = fseek(input_file, 0, SEEK_SET);
     if(ret == ERROR) {
         fclose(input_file);
         fclose(output_file);
+<<<<<<< Updated upstream
         perror("Error in call fseek");
+=======
+        perror("Error in call file seek");
+>>>>>>> Stashed changes
         return ERROR;
     }
 
@@ -87,20 +179,33 @@ ssize_t create_reverse_file(const char* input_path, const char* output_path) {
         long bytes_to_read = bytes_left < BUFFER_SIZE ? bytes_left : BUFFER_SIZE;
 
         size_t bytes_read = fread(buffer, 1, bytes_to_read, input_file);
-        if (bytes_read == 0) {
-            perror("failed to read input file");
-            fclose(input_file);
+        if(feof(input_file) ||  ferror(input_file)) {
+             perror("Failed to read input file when call fread");
+             fclose(input_file);
             fclose(output_file);
-            return EXIT_FAILURE;
+            return ERROR;
         }
 
         reverse_line(buffer, bytes_read);
         bytes_left -= bytes_read;
 
+<<<<<<< Updated upstream
         fseek(output_file, bytes_left, SEEK_SET);
         
         size_t bytes_written = fwrite(buffer, 1, bytes_read, output_file);
         if (bytes_written == 0) {
+=======
+        ret = fseek(output_file, bytes_left, SEEK_SET);
+        if(ret == ERROR) {
+            fclose(input_file);
+            fclose(output_file);
+            perror("Error in call file seek");
+            return ERROR;
+        }
+
+        size_t bytes_written = fwrite(buffer, 1, bytes_read, output_file);
+        if (bytes_written == ERROR) {
+>>>>>>> Stashed changes
             perror("Error call write");
             fclose(input_file);
             fclose(output_file);
@@ -110,60 +215,92 @@ ssize_t create_reverse_file(const char* input_path, const char* output_path) {
 
     fclose(input_file);
     fclose(output_file);
-    return EXIT_SUCCESS;
+    return OK;
 }
 
-bool is_correct_len_folder(char* name_rev_folder, char* path_new_rev_folder, char* path_new_origin_folder,
+bool is_correct_len_folder(char** name_rev_folder, char** path_rev_folder, char** path_origin_folder,
                            const struct dirent* d_entry) {
-      if(strlen(d_entry->d_name) > MAX_LEN_NAME_FILE) {
-            ssize_t relocation_size = strlen(d_entry->d_name - MAX_LEN_NAME_FILE + INCREASE_POS);
+    char* name_new_rev_folder, *path_new_rev_folder, *path_new_origin_folder;
 
-            name_rev_folder = (char*)realloc(name_rev_folder, relocation_size * sizeof(char));
-            path_new_rev_folder = (char*)realloc(path_new_rev_folder, relocation_size * sizeof(char));
-            path_new_origin_folder = (char*)realloc(path_new_origin_folder, relocation_size * sizeof(char));
+    if (strlen(d_entry->d_name) > MAX_LEN_NAME_FILE) {
+        ssize_t relocation_size = strlen(d_entry->d_name) - MAX_LEN_NAME_FILE + INCREASE_POS;
 
-            if(name_rev_folder == NULL || path_new_rev_folder == NULL || path_new_origin_folder == NULL) {
-                 fprintf(stderr, "Error: failed to reallocate memory\n");
-                 free(name_rev_folder);
-                 free(path_new_rev_folder);
-                 free(path_new_origin_folder);
-                 return false;
-            }
-       }
-      return true;
+        name_new_rev_folder = (char*)realloc(*name_rev_folder, relocation_size * sizeof(char));
+        if (name_new_rev_folder == NULL) {
+             perror("Memory allocation name_rev_folder error\n");
+            return false;
+        }
+
+        *name_rev_folder = name_new_rev_folder;
+
+        path_new_rev_folder = (char*)realloc(*path_rev_folder, relocation_size * sizeof(char));
+        if (path_new_rev_folder == NULL) {
+            perror("Memory allocation path_new_rev_folder error\n");
+            return false;
+        }
+        *path_rev_folder = path_new_rev_folder;
+
+        path_new_origin_folder = (char*)realloc(*path_origin_folder, relocation_size * sizeof(char));
+        if (path_new_origin_folder == NULL) {
+            perror("Error: failed to reallocate path_new_origin_folder memory\n");
+            return false;
+        }
+        *path_origin_folder = path_new_origin_folder;
+    }
+    return true;
 }
 
 ssize_t create_reverse_folder(const char*, const char*);
 
-ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_folder) {
-    DIR *dir;
+ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_folder) {;
     struct dirent* d_entry;
+<<<<<<< Updated upstream
 
     if ((dir = opendir(path_origin_folder)) == NULL) {
          perror("The file was not opendir");
+=======
+    DIR* dir = opendir(path_origin_folder);
+    if (dir == NULL) {
+         perror("The file was not open dir");
+>>>>>>> Stashed changes
          return ERROR;
     }
 
     char* name_rev_folder = (char*)malloc(MAX_LEN_NAME_FILE  * sizeof (char));
-    char* path_new_rev_folder = (char*)malloc(MAX_LEN_NAME_FILE + strlen(path_reverse_folder) * sizeof(char));
-    char* path_new_origin_folder = (char*)malloc((MAX_LEN_NAME_FILE + strlen(path_origin_folder)) * sizeof(char));
-    
-    if(name_rev_folder == NULL || path_new_rev_folder == NULL || path_new_origin_folder == NULL) {
-        fprintf(stderr, "Error: failed to reallocate memory\n");
-        free(name_rev_folder);
-        free(path_new_rev_folder);
-        free(path_new_origin_folder);
-        return ERROR;
+    if(name_rev_folder == NULL) {
+         closedir(dir);
+         perror("Error: failed to reallocate memory name_rev_folder\n");
+         return ERROR;
     }
 
-    ssize_t ret = START_POS;
+    char* path_new_rev_folder = (char*)malloc(MAX_LEN_NAME_FILE + strlen(path_reverse_folder) * sizeof(char));
+     if(path_new_rev_folder == NULL) {
+         closedir(dir);
+         free(name_rev_folder);
+         perror("Error: failed to reallocate memory path_new_rev_folder\n");
+         return ERROR;
+    }
+    char* path_new_origin_folder = (char*)malloc((MAX_LEN_NAME_FILE + strlen(path_origin_folder)) * sizeof(char));
+    if(path_new_origin_folder == NULL) {
+         closedir(dir);
+         free(name_rev_folder);
+         free(path_new_rev_folder);
+         perror("Error: failed to reallocate memory path_new_origin_folder\n");
+         return ERROR;
+    }
+
+    ssize_t ret = OK;
 
     while ((d_entry = readdir(dir)) != NULL) {
 
-        if(!is_correct_len_folder(name_rev_folder,
-                                  path_new_rev_folder,
-                                  path_new_origin_folder,
+        if(!is_correct_len_folder(&name_rev_folder,
+                                  &path_new_rev_folder,
+                                  &path_new_origin_folder,
                                   d_entry)) {
+            free(name_rev_folder);
+            free(path_new_rev_folder);
+            free(path_new_origin_folder);
+            closedir(dir);
             return ERROR;
         }
 
@@ -175,6 +312,13 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
         int ret_origin = sprintf(path_new_origin_folder, "%s/%s", path_origin_folder, d_entry->d_name);
 
         if(ret_reverse < 0 || ret_origin < 0) {
+<<<<<<< Updated upstream
+=======
+            closedir(dir);
+            free(name_rev_folder);
+            free(path_new_rev_folder);
+            free(path_new_origin_folder);
+>>>>>>> Stashed changes
             perror("Error call sprintf");
             return ERROR;
         }
@@ -194,18 +338,21 @@ ssize_t fill_folder(const char* path_origin_folder, const char* path_reverse_fol
             return ERROR;
         }
 
-        memset(name_rev_folder, 0, strlen(path_new_origin_folder) * sizeof(char));
-        memset(path_new_rev_folder, 0, strlen(path_new_origin_folder) * sizeof(char));
-        memset(path_new_origin_folder, 0, strlen(path_new_origin_folder) * sizeof(char));
+        name_rev_folder = memset(name_rev_folder, 0, strlen(path_new_origin_folder) * sizeof(char));
+        path_new_rev_folder = memset(path_new_rev_folder, 0, strlen(path_new_origin_folder) * sizeof(char));
+        path_new_origin_folder = memset(path_new_origin_folder, 0, strlen(path_new_origin_folder) * sizeof(char));
     }
 
     free(name_rev_folder);
     free(path_new_rev_folder);
     free(path_new_origin_folder);
     closedir(dir);
-    return EXIT_SUCCESS;
+    return OK;
 }
 
+/// \param path_origin_folder
+/// \param path_reverse_folder
+/// \return  STATUS: ERROR/OK
 ssize_t create_reverse_folder(const char* path_origin_folder,
                               const char* path_reverse_folder) {
 
@@ -216,9 +363,12 @@ ssize_t create_reverse_folder(const char* path_origin_folder,
     }
 
     fill_folder(path_origin_folder, path_reverse_folder);
-    return EXIT_SUCCESS;
+    return OK;
 }
 
+/// \param argc
+/// \param argv
+/// \return max_size
 size_t maximum_size_path(int argc, char** argv) {
     size_t max_size = 0, cur_len;
     for(int i = 1; i < argc; ++i) {
@@ -229,10 +379,14 @@ size_t maximum_size_path(int argc, char** argv) {
     return max_size;
 }
 
+/// \param argc
+/// \param argv
+/// \return  STATUS: ERROR/OK
 ssize_t parse_command_line(int argc, char** argv) {
-
-    if (argc < MIN_NUMBER_CORRECT_ARGS)
+    if (argc < MIN_NUMBER_CORRECT_ARGS) {
+        perror("Error: wrong number of arguments < MIN_NUMBER_CORRECT_ARGS = 2\n");
         return ERROR;
+    }
 
     size_t max_size = maximum_size_path(argc, argv);
     char* rev_folder = (char*)malloc(max_size * sizeof(char));
@@ -240,9 +394,14 @@ ssize_t parse_command_line(int argc, char** argv) {
     char* origin_folder = NULL;
 
     for (int i = 1; i < argc; ++i) {
-        find_name_folder(argv[i], &path_to_folder, &origin_folder);
+        ssize_t ret = find_name_folder(argv[i], &path_to_folder, &origin_folder);
+        if (ret == ERROR) {
+            free(path_to_folder);
+            free(rev_folder);
+            return ERROR;
+        }
 
-        strncpy(rev_folder, origin_folder, strlen(origin_folder));
+        rev_folder = strncpy(rev_folder, origin_folder, strlen(origin_folder));
         reverse_line(rev_folder, strlen(rev_folder));
         strcat(path_to_folder, rev_folder);
 
@@ -255,11 +414,15 @@ ssize_t parse_command_line(int argc, char** argv) {
 
     free(path_to_folder);
     free(rev_folder);
-    return EXIT_SUCCESS;
+    return OK;
 }
 
+/// \param argc
+/// \param argv
+/// \return EXIT_FAILURE : EXIT_SUCCESS
 int main(int argc, char** argv) {
     ssize_t ret = parse_command_line(argc, argv);
+<<<<<<< Updated upstream
 
     if (ret == ERROR) {
         fprintf(stderr, "Error: wrong number of arguments < MIN_NUMBER_CORRECT_ARGS = 2\n");
@@ -268,3 +431,7 @@ int main(int argc, char** argv) {
 
     return EXIT_SUCCESS;
 }
+=======
+    return  (ret == ERROR) ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+>>>>>>> Stashed changes
