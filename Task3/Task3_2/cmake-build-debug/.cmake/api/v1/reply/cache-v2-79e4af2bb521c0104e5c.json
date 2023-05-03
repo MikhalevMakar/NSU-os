@@ -55,7 +55,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/natasamihaleva/NSU_OS/Task3_2/cmake-build-debug"
+			"value" : "/Users/natasamihaleva/NSU_OS/Task3/Task3_2/cmake-build-debug"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -515,7 +515,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/natasamihaleva/NSU_OS/Task3_2"
+			"value" : "/Users/natasamihaleva/NSU_OS/Task3/Task3_2"
 		},
 		{
 			"name" : "CMAKE_INSTALL_NAME_TOOL",
@@ -1087,7 +1087,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/natasamihaleva/NSU_OS/Task3_2/cmake-build-debug"
+			"value" : "/Users/natasamihaleva/NSU_OS/Task3/Task3_2/cmake-build-debug"
 		},
 		{
 			"name" : "Task3_2_IS_TOP_LEVEL",
@@ -1111,7 +1111,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/natasamihaleva/NSU_OS/Task3_2"
+			"value" : "/Users/natasamihaleva/NSU_OS/Task3/Task3_2"
 		}
 	],
 	"kind" : "cache",
