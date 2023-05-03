@@ -74,6 +74,6 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    ssize_t ret = selection_command("change_permitted\n", argv[1]);
+    ssize_t ret = selection_command(get_name_command(), argv[1]);
     return ret;
 }
