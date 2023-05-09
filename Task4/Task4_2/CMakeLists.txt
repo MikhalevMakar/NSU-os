@@ -3,4 +3,4 @@ project(Task4_2)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(Task4_2 main.cpp)
+add_executable(Task4_2 stack_corruption.c)
