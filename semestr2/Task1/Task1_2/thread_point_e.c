@@ -5,14 +5,16 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
+
 // pthread_self стал randomый так как освобоэдается
-void* my_thread(void *arg) {
+
+void* my_thread() {
 	printf("my_thread [%d %d %d %lu]: Hello from my_thread!\n", getpid(), getppid(), gettid(), (unsigned long)pthread_self());
 
-    err = pthread_detach(pthread_self());
+    int err = pthread_detach(pthread_self());
     if (err) {
         fprintf(stderr, "pthread_detach() failed: %s\n", strerror(err));
-        return EXIT_FAILURE;
+        pthread_exit(NULL);
     }
 	return NULL;
 }

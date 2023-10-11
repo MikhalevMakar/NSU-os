@@ -8,7 +8,8 @@
 #include <signal.h>
 
 // pthread_self стал randomый так как освобоэдается
-void* my_thread(void *arg) {
+
+void* my_thread() {
 	printf("my_thread [%d %d %d %lu]: Hello from my_thread!\n", getpid(), getppid(), gettid(), (unsigned long)pthread_self());
 	return NULL;
 }

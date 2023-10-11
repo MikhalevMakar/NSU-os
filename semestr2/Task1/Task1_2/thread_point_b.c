@@ -1,12 +1,9 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <stdlib.h>
 
-void* my_thread(void *arg) {
+void* my_thread() {
     int* value = (int*)malloc(sizeof(int));
     if (value == NULL) {
         perror("my_thread: malloc failed");

@@ -6,7 +6,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-//watch -d -n1 cat /proc/pid/maps
+//watch -d -n1 cat /proc//maps
+// static_local : почему разные адреса
+
 
 static int global_value = 10;
 
@@ -22,20 +24,17 @@ void* my_thread(void *arg) {
 
 int main() {
    printf("main [pid: %d, ppid: %d, tid: %d]: Hello from main!\n", getpid(), getppid(), gettid());
-
+   sleep(20);
    const int const_local = 5;
    static int static_local = 10;
    int local = 15;
    printf("main: address local: %p, static_local: %p, const_local: %p, global_value: %p\n", &local, &static_local, &const_local, &global_value );
 
    pthread_t tid;
-   int err;
-   for(int i = 0; i < COUNT_THREAD; ++i) {
-       err = pthread_create(&tid, NULL, my_thread, NULL);
-       if (err) {
-           fprintf(stderr, "main: pthread_create() failed: %s\n", strerror(err));
-           return EXIT_FAILURE;
-       }
+   int err = pthread_create(&tid, NULL, my_thread, NULL);
+   if (err) {
+       fprintf(stderr, "main: pthread_create() failed: %s\n", strerror(err));
+       return EXIT_FAILURE;
    }
 
    void* ret_val;
@@ -45,5 +44,6 @@ int main() {
        return EXIT_FAILURE;
    }
 
+   sleep(30);
    return EXIT_SUCCESS;
 }

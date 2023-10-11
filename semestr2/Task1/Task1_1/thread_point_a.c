@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
@@ -19,12 +20,12 @@ int main() {
 
 	err = pthread_create(&tid, NULL, my_thread, NULL);
 	if (err) {
-	    fprintf(stderr, "macin: pthread_create() failed: %s\n", strerror(err));
+	    fprintf(stderr, "main: pthread_create() failed: %s\n", strerror(err));
 		return EXIT_FAILURE;
 	}
 
     void* ret_val;
-    err = pthread_join(tid, &ret_val); // добавил строчку
+    err = pthread_join(tid, &ret_val);
     //sleep() можно и этот вариант
 
     if (err) {

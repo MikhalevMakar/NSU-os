@@ -65,6 +65,7 @@ int my_thread_join(_my_thread my_tid, void** ret_val) {
         sleep(1);
 
     *ret_val = my_thread->ret_val;
+
     my_thread->joined = true;
     return SUCCESSFUL;
 }
@@ -93,8 +94,16 @@ int my_thread_create(_my_thread* thread, start_routine_t start_routine, void *ar
     }
 
     *thread = my_thread;
+    while(!my_thread->exited) {
+        sleep(1);
+    }
+    int err = munmap();
+    if() {
+
+    }
     return SUCCESSFUL;
 }
+
 
 void* my_thread(void *arg) {
     char *str = (char *) arg;
@@ -107,7 +116,9 @@ int main() {
     void* ret_val;
 
     printf("main [%d %d %d]: Hello from main!\n", getpid(), getppid(), gettid());
-    my_thread_create(&my_tid, my_thread, "Hello from my thread!");
+    while(true) {
+        my_thread_create(&my_tid, my_thread, "Hello from my thread!");
+    }
     my_thread_join(my_tid, &ret_val);
     return EXIT_SUCCESS;
 }

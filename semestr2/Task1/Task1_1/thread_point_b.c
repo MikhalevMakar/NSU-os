@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 enum {
     COUNT_THREAD = 5
@@ -28,14 +29,15 @@ int main() {
            return EXIT_FAILURE;
        }
    }
-
+   bool status_err == false;
    void* ret_val;
    for(int i = 0; i < COUNT_THREAD; ++i) {
        err = pthread_join(tid[i], &ret_val);
        if (err) {
+           status_err = true;
+
            fprintf(stderr, "main: pthread_join() failed %s\n", strerror(err));
-           return EXIT_FAILURE;
        }
    }
-   return EXIT_SUCCESS;
+   return status_err ? EXIT_FAILURE : EXIT_SUCCESS;
 }

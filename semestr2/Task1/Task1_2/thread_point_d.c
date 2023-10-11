@@ -5,8 +5,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
+
 // gettid обнулится возможно на размер int
-void* my_thread(void *arg) {
+// pthread_self - const
+
+void* my_thread() {
 	printf("my_thread [%d %d %d %lu]: Hello from my_thread!\n", getpid(), getppid(), gettid(), (unsigned long)pthread_self());
 	return NULL;
 }
@@ -22,11 +25,11 @@ int main() {
             return EXIT_FAILURE;
         }
 
-        void *ret_val;
-        err = pthread_join(tid, &ret_val);
-        if (err) {
-            fprintf(stderr, "main: pthread_join() failed %s\n", strerror(err));
-        }
+//        void *ret_val;
+//        err = pthread_join(tid, &ret_val);
+//        if (err) {
+//            fprintf(stderr, "main: pthread_join() failed %s\n", strerror(err));
+//        }
     }
 	return EXIT_SUCCESS;
 }
