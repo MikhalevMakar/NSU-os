@@ -46,14 +46,14 @@ void* non_block_int_sig() {
     sigset_t set_all_sig, set_int_sig;
     int err;
 
-//    err = sigfillset(&set_all_sig);
-//    if (err)
-//        handle_error_en(err, "sigfillset");
-//
-//    err = pthread_sigmask(SIG_BLOCK, &set_all_sig, NULL);
-//    if (err)
-//        handle_error_en(err, "pthread_sigmask");
-//
+    err = sigfillset(&set_all_sig);
+    if (err)
+        handle_error_en(err, "sigfillset");
+
+    err = pthread_sigmask(SIG_BLOCK, &set_all_sig, NULL);
+    if (err)
+        handle_error_en(err, "pthread_sigmask");
+
     err = sigaddset(&set_int_sig, SIGINT);
     if (err)
         handle_error_en(err, "sigfillset");
@@ -96,12 +96,6 @@ void* non_block_quit_sig() {
     return NULL;
 }
 
-void* signal_all(void* arg) {
-    printf("create thread block_all_signal %d\n", gettid());
-    sleep(10);
-    return NULL;
-}
-
 int main() {
     pthread_t tid[COUNT_THREAD];
     bool status_err = false;
@@ -112,53 +106,45 @@ int main() {
         fprintf(stderr, "main: block_all_signal() failed: %s\n", strerror(err));
          status_err = true;
     }
-    //err = pthread_join(tid[1], &ret_val);
-//    if (err) {
-//         status_err = true;
-//            fprintf(stderr, "main: pthread_join() failed %s\n", strerror(err));
-//        }
+    err = pthread_join(tid[1], &ret_val);
+    if (err) {
+         status_err = true;
+            fprintf(stderr, "main: pthread_join() failed %s\n", strerror(err));
+        }
     sleep(3);
     pthread_kill(tid[0], SIGINT);
 
-//    err = pthread_create(&tid[1], NULL, non_block_int_sig, NULL);
-//    if (err) {
-//        fprintf(stderr, "main: non_block_int_sig() failed: %s\n", strerror(err));
-//        status_err = true;
-//    }
-//    sleep(3);
-//    pthread_kill(tid[1], SIGINT);
+    err = pthread_create(&tid[1], NULL, non_block_int_sig, NULL);
+    if (err) {
+        fprintf(stderr, "main: non_block_int_sig() failed: %s\n", strerror(err));
+        status_err = true;
+    }
+    sleep(3);
+    pthread_kill(tid[1], SIGINT);
 
-//    err = pthread_create(&tid[2], NULL, non_block_quit_sig, NULL);
-//    if (err) {
-//        fprintf(stderr, "main: non_block_quit_sig() failed: %s\n", strerror(err));
-//        status_err = true;
-//    }
-//
-//
-//    err = pthread_create(&tid[2], NULL, non_block_quit_sig, NULL);
-//    if (err) {
-//        fprintf(stderr, "main: non_block_quit_sig() failed: %s\n", strerror(err));
-//        status_err = true;
-//    }
-//    sleep(3);
+    err = pthread_create(&tid[2], NULL, non_block_quit_sig, NULL);
+    if (err) {
+        fprintf(stderr, "main: non_block_quit_sig() failed: %s\n", strerror(err));
+        status_err = true;
+    }
 
-//    err = pthread_create(&tid[3], NULL, signal_all, NULL);
-//    if (err) {
-//        fprintf(stderr, "main: signal() failed: %s\n", strerror(err));
-//        status_err = true;
-//    }
-//    sleep(3);
-//    pthread_kill(tid[3], SIGINT);
-//
-//    void* ret_val;
-//    for(int i = 0; i < COUNT_THREAD-1; ++i) {
-//        err = pthread_join(tid[1], &ret_val);
-////        if (err) {
-////            status_err = true;
-////            fprintf(stderr, "main: pthread_join() failed %s\n", strerror(err));
-////        }
-//    }
-//    printf("live main thread");
-//    sleep(3);
+
+    err = pthread_create(&tid[2], NULL, non_block_quit_sig, NULL);
+    if (err) {
+        fprintf(stderr, "main: non_block_quit_sig() failed: %s\n", strerror(err));
+        status_err = true;
+    }
+    sleep(3);
+
+    void* ret_val;
+    for(int i = 0; i < COUNT_THREAD-1; ++i) {
+        err = pthread_join(tid[1], &ret_val);
+        if (err) {
+            status_err = true;
+            fprintf(stderr, "main: pthread_join() failed %s\n", strerror(err));
+        }
+    }
+    printf("live main thread");
+    sleep(3);
     return status_err ? EXIT_FAILURE : EXIT_SUCCESS;
 }

@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <ucontext.h>
 #include <pthread.h>
-
+pthread_mutex_t mutex;
 enum {
     EXC_CREATE_CLONE = 1,
     PAGE = 4096,
@@ -180,6 +180,7 @@ void start_thread(void) {
             uthreads[i]->thread_func(uthreads[i]->arg);
         }
     }
+    printf("FINISH WORK THREAD");
 }
 
 //void start_thread(void) {
