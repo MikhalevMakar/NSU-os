@@ -7,21 +7,17 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sched.h>
-
 #include "queue.h"
 
 int main() {
 	queue_t *q;
 
 	printf("main: [%d %d %d]\n", getpid(), getppid(), gettid());
-
 	q = queue_init(1000);
 
 	for (int i = 0; i < 10; i++) {
 		int ok = queue_add(q, i);
-
 		printf("ok %d: add value %d\n", ok, i);
-
 		queue_print_stats(q);
 	}
 
@@ -33,9 +29,7 @@ int main() {
 
 		queue_print_stats(q);
 	}
-
 	queue_destroy(q);
-
-	return 0;
+	return EXIT_SUCCESS;
 }
 
