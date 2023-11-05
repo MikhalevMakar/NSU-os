@@ -54,9 +54,14 @@ void queue_destroy(queue_t *q) {
     if (err)
         fprintf(stderr, "queue_destroy: pthread_join() failed %s\n", strerror(err));
 
-    free(q);
+    qnode_t *cur_ptr_q = q->first, *next_ptr_q;
+    while (cur_ptr_q != NULL) {
+        next_ptr_q = cur_ptr_q->next;
+        free(cur_ptr_q);
+        cur_ptr_q = next_ptr_q;
+    }
 }
-
+// санитайзер
 int queue_add(queue_t *q, int val) {
 	q->add_attempts++;
 
@@ -111,4 +116,3 @@ void queue_print_stats(queue_t *q) {
 		q->add_attempts, q->get_attempts, q->add_attempts - q->get_attempts,
 		q->add_count, q->get_count, q->add_count -q->get_count);
 }
-

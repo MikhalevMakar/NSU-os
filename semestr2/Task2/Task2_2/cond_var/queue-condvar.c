@@ -3,8 +3,14 @@
 #include <assert.h>
 #include <stdbool.h>
 #include "queue-mutex.h"
+enum EVENT {
+    OK,
+    NOK
+};
 
 pthread_mutex_t mutex;
+pthread_cond_t cond;
+EVENT shared_data = OK;
 volatile int stop_flag = false;
 
 void *qmonitor(void *arg) {
@@ -22,9 +28,11 @@ void *qmonitor(void *arg) {
 
 void init_mutex() {
     int err = pthread_mutex_init(&mutex, NULL);
-    if (err)
-        printf ("main: pthread_mutex_init() failed: %s\n", strerror(err));
+    if (err) printf("main: pthread_mutex_init() failed: %s\n", strerror(err));
+    err = pthread_cond_init(&cond, NULL);
+    if (err) printf("main: pthread_cond_init() failed: %s\n", strerror(err));
 }
+
 
 queue_t* queue_init(int max_count) {
 	int err;
@@ -77,59 +85,78 @@ void destroy_mutex() {
 
 int queue_add(queue_t *q, int val) {
     pthread_mutex_lock(&mutex);
-	q->add_attempts++;
 
-	assert(q->count <= q->max_count);
+    while (shared_data != NOK) {
+        // Ждем, пока shared_data не станет NOK
+        pthread_cond_wait(&cond, &mutex);
+    }
 
-	if (q->count == q->max_count) {
+    q->add_attempts++;
+
+    assert(q->count <= q->max_count);
+
+    if (q->count == q->max_count) {
         pthread_mutex_unlock(&mutex);
         return 0;
     }
 
-	qnode_t *new = malloc(sizeof(qnode_t));
-	if (!new) {
-		printf("malloc: cannot allocate memory for new node\n");
-		abort();
-	}
+    qnode_t *new = malloc(sizeof(qnode_t));
+    if (!new) {
+        printf("malloc: cannot allocate memory for new node\n");
+        abort();
+    }
 
-	new->val = val;
-	new->next = NULL;
+    new->val = val;
+    new->next = NULL;
 
-	if (!q->first)
-		q->first = q->last = new;
-	else {
-		q->last->next = new;
-		q->last = q->last->next;
-	}
+    if (!q->first)
+        q->first = q->last = new;
+    else {
+        q->last->next = new;
+        q->last = q->last->next;
+    }
 
-	q->count++;
-	q->add_count++;
+    q->count++;
+    q->add_count++;
+
+    shared_data = OK;
+
+    pthread_cond_signal(&cond);
     pthread_mutex_unlock(&mutex);
-	return 1;
+    return 1;
 }
 
 int queue_get(queue_t *q, int *val) {
     pthread_mutex_lock(&mutex);
-	q->get_attempts++;
+    q->get_attempts++;
 
-	assert(q->count >= 0);
+    assert(q->count >= 0);
 
-	if (q->count == 0) {
+    while (shared_data != OK) {
+        pthread_cond_wait(&cond, &mutex);
+    }
+
+    if (q->count == 0) {
         pthread_mutex_unlock(&mutex);
         return 0;
     }
 
-	qnode_t *tmp = q->first;
+    qnode_t *tmp = q->first;
 
-	*val = tmp->val;
-	q->first = q->first->next;
+    *val = tmp->val;
+    q->first = q->first->next;
 
-	free(tmp);
-	q->count--;
-	q->get_count++;
+    free(tmp);
+    q->count--;
+    q->get_count++;
+
+    shared_data = NOK;
+
+    pthread_cond_signal(&cond);
     pthread_mutex_unlock(&mutex);
-	return 1;
+    return 1;
 }
+
 
 void queue_print_stats(queue_t *q) {
     pthread_mutex_lock(&mutex);
@@ -139,5 +166,3 @@ void queue_print_stats(queue_t *q) {
 		q->add_count, q->get_count, q->add_count -q->get_count);
     pthread_mutex_unlock(&mutex);
 }
-
-

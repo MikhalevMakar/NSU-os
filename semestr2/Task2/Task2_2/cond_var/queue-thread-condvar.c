@@ -5,21 +5,15 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <signal.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <pthread.h>
 #include <sched.h>
 
-#include "queue.h"
+#include "queue-condvar.h"
 
 #define RED "\033[41m"
 #define NOCOLOR "\033[0m"
-
-void signal_handler() {
-  printf("signal");
-  sleep(10);
-}
 
 void set_cpu(int n) {
 	int err;
@@ -34,11 +28,11 @@ void set_cpu(int n) {
 		printf("set_cpu: pthread_setaffinity failed for cpu %d\n", n);
 		return;
 	}
+
 	printf("set_cpu: set cpu %d\n", n);
 }
 
 void* reader(void *arg) {
-    signal(SIGINT, signal_handler);
 	int expected = 0;
 	queue_t *q = (queue_t *)arg;
 	printf("reader [%d %d %d]\n", getpid(), getppid(), gettid());
@@ -55,17 +49,16 @@ void* reader(void *arg) {
 
 		expected = val + 1;
 	}
+
 	return NULL;
 }
 
 void* writer(void *arg) {
-     signal(SIGINT, signal_handler);
-
 	int i = 0;
 	queue_t *q = (queue_t *)arg;
 	printf("writer [%d %d %d]\n", getpid(), getppid(), gettid());
 
-	set_cpu(2);
+	set_cpu(1);
 
 	while (true) {
 		int ok = queue_add(q, i);
@@ -75,6 +68,19 @@ void* writer(void *arg) {
 	return NULL;
 }
 
+void free_resources(queue_t *q) {
+     destroy_sem();
+     queue_destroy(q);
+}
+
+int join_thread(pthread_t tid) {
+    void* ret_val;
+    int err = pthread_join(tid, &ret_val);
+    if (err)
+        fprintf(stderr, "queue_destroy: pthread_join() failed %s\n", strerror(err));
+    return err;
+}
+
 int main() {
 	pthread_t tid_reader, tid_writer;
 	queue_t *q;
@@ -82,35 +88,27 @@ int main() {
 
 	printf("main [%d %d %d]\n", getpid(), getppid(), gettid());
 
-	q = queue_init(10000000);
-
+	q = queue_init(1000);
+    init_mutex();
     err = pthread_create(&tid_writer, NULL, writer, q);
 	if (err) {
+        free_resources(q);
 		printf("main: pthread_create() failed: %s\n", strerror(err));
 		return EXIT_FAILURE;
 	}
 
-	sched_yield();
+//	sched_yield();
 
     err = pthread_create(&tid_reader, NULL, reader, q);
 	if (err) {
-		printf("main: pthread_create() failed: %s\n", strerror(err));
+        printf("main: pthread_create() failed: %s\n", strerror(err));
+        free_resources(q);
+        err = join_thread(tid_writer);
 		return EXIT_FAILURE;
 	}
 
-    usleep(400);
-    pthread_kill(tid_reader, SIGINT);
-    pthread_kill(tid_writer, SIGINT);
-    void* ret_val;
-    err = pthread_join(tid_reader, &ret_val);
-    if (err)
-        fprintf(stderr, "queue_destroy: pthread_join()[reader] failed %s\n", strerror(err));
-
-    err = pthread_join(tid_writer, &ret_val);
-    if (err)
-        fprintf(stderr, "queue_destroy: pthread_join()[writer] failed %s\n", strerror(err));
-
-    queue_destroy(q);
-
+    err = join_thread(tid_reader);
+    err = join_thread(tid_writer);
+    free_resources(q);
 	return err ? EXIT_FAILURE : EXIT_SUCCESS;
 }

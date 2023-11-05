@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <semaphore.h>
-#include "queue-semafor.h"
+#include "queue-condvar.h"
 
 sem_t semaphore;
 volatile int stop_flag = false;
@@ -56,15 +56,17 @@ queue_t* queue_init(int max_count) {
 
 void queue_destroy(queue_t *q) {
     stop_flag = true;
-    void* ret_val;
+    void *ret_val;
     int err = pthread_join(q->qmonitor_tid, &ret_val);
-
     if (err)
         fprintf(stderr, "queue_destroy: pthread_join() failed %s\n", strerror(err));
-
-    free(q);
+    qnode_t *cur_ptr_q = q->first, *next_ptr_q;
+    while (cur_ptr_q != NULL) {
+        next_ptr_q = cur_ptr_q->next;
+        free(cur_ptr_q);
+        cur_ptr_q = next_ptr_q;
+    }
 }
-
 
 void destroy_sem() {
     int err = sem_destroy(&semaphore);;
