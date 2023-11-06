@@ -71,18 +71,9 @@ void destroy_mutex() {
 }
 
 int queue_add(queue_t *q, int val) {
-    usleep(1000000);
-    pthread_mutex_lock(&mutex);
-	q->add_attempts++;
+    usleep(100000);
 
-	assert(q->count <= q->max_count);
-
-	if (q->count == q->max_count) {
-        pthread_mutex_unlock(&mutex);
-        return 0;
-    }
-
-	qnode_t *new = malloc(sizeof(qnode_t));
+    qnode_t *new = malloc(sizeof(qnode_t));
 	if (!new) {
 		printf("malloc: cannot allocate memory for new node\n");
 		abort();
@@ -90,6 +81,17 @@ int queue_add(queue_t *q, int val) {
 
 	new->val = val;
 	new->next = NULL;
+
+    pthread_mutex_lock(&mutex);
+	q->add_attempts++;
+
+	assert(q->count <= q->max_count);
+
+	if (q->count == q->max_count) {
+        free(new);
+        pthread_mutex_unlock(&mutex);
+        return 0;
+    }
 
 	if (!q->first)
 		q->first = q->last = new;
@@ -101,14 +103,15 @@ int queue_add(queue_t *q, int val) {
 	q->count++;
 	q->add_count++;
     pthread_mutex_unlock(&mutex);
+
 	return 1;
 }
 
 int queue_get(queue_t *q, int *val) {
     usleep(1000000);
+
     pthread_mutex_lock(&mutex);
 	q->get_attempts++;
-
 	assert(q->count >= 0);
 
 	if (q->count == 0) {
@@ -118,23 +121,21 @@ int queue_get(queue_t *q, int *val) {
 
 	qnode_t *tmp = q->first;
 
-	*val = tmp->val;
 	q->first = q->first->next;
-
-	free(tmp);
 	q->count--;
 	q->get_count++;
     pthread_mutex_unlock(&mutex);
+
+    *val = tmp->val;
+    free(tmp);
 	return 1;
 }
 
 void queue_print_stats(queue_t *q) {
-    pthread_mutex_lock(&mutex);
 	printf("queue stats: current size %d; attempts: (%ld %ld %ld); counts (%ld %ld %ld)\n",
 		q->count,
 		q->add_attempts, q->get_attempts, q->add_attempts - q->get_attempts,
 		q->add_count, q->get_count, q->add_count -q->get_count);
-    pthread_mutex_unlock(&mutex);
 }
 
 

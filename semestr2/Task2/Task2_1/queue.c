@@ -8,14 +8,12 @@ volatile int stop_flag = false;
 
 void *qmonitor(void *arg) {
 	queue_t *q = (queue_t *)arg;
-
 	printf("qmonitor: [%d %d %d]\n", getpid(), getppid(), gettid());
 
 	while (!stop_flag) {
 		queue_print_stats(q);
 		sleep(1);
 	}
-
 	return NULL;
 }
 
@@ -61,7 +59,7 @@ void queue_destroy(queue_t *q) {
         cur_ptr_q = next_ptr_q;
     }
 }
-// санитайзер
+
 int queue_add(queue_t *q, int val) {
 	q->add_attempts++;
 
@@ -112,7 +110,7 @@ int queue_get(queue_t *q, int *val) {
 
 void queue_print_stats(queue_t *q) {
 	printf("queue stats: current size %d; attempts: (%ld %ld %ld); counts (%ld %ld %ld)\n",
-		q->count,
-		q->add_attempts, q->get_attempts, q->add_attempts - q->get_attempts,
-		q->add_count, q->get_count, q->add_count -q->get_count);
+		   q->count,
+		   q->add_attempts, q->get_attempts, q->add_attempts - q->get_attempts,
+		   q->add_count, q->get_count, q->add_count -q->get_count);
 }

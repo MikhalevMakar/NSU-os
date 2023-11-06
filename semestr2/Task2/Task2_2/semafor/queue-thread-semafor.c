@@ -107,8 +107,8 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-    err = join_thread(tid_reader);
-    err = join_thread(tid_writer);
+    int err_reader = join_thread(tid_reader);
+    int err_writer = join_thread(tid_writer);
     free_resources(q);
-	return err ? EXIT_FAILURE : EXIT_SUCCESS;
+	return err_reader || err_writer ? EXIT_FAILURE : EXIT_SUCCESS;
 }

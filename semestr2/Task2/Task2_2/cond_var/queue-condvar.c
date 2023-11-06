@@ -2,7 +2,8 @@
 #include <pthread.h>
 #include <assert.h>
 #include <stdbool.h>
-#include "queue-mutex.h"
+#include "queue-condvar.h"
+
 enum EVENT {
     OK,
     NOK
@@ -10,7 +11,7 @@ enum EVENT {
 
 pthread_mutex_t mutex;
 pthread_cond_t cond;
-EVENT shared_data = OK;
+enum EVENT shared_data = OK;
 volatile int stop_flag = false;
 
 void *qmonitor(void *arg) {
@@ -82,22 +83,10 @@ void destroy_mutex() {
     int err = pthread_mutex_destroy(&mutex);
     if(err) fprintf(stderr, "pthread_spin_destroy: failed %s\n", strerror(err));
 }
-
 int queue_add(queue_t *q, int val) {
     pthread_mutex_lock(&mutex);
-
-    while (shared_data != NOK) {
-        // Ждем, пока shared_data не станет NOK
+    while (q->count == q->max_count || shared_data == NOK) {
         pthread_cond_wait(&cond, &mutex);
-    }
-
-    q->add_attempts++;
-
-    assert(q->count <= q->max_count);
-
-    if (q->count == q->max_count) {
-        pthread_mutex_unlock(&mutex);
-        return 0;
     }
 
     qnode_t *new = malloc(sizeof(qnode_t));
@@ -119,7 +108,7 @@ int queue_add(queue_t *q, int val) {
     q->count++;
     q->add_count++;
 
-    shared_data = OK;
+    shared_data = NOK;
 
     pthread_cond_signal(&cond);
     pthread_mutex_unlock(&mutex);
@@ -128,17 +117,8 @@ int queue_add(queue_t *q, int val) {
 
 int queue_get(queue_t *q, int *val) {
     pthread_mutex_lock(&mutex);
-    q->get_attempts++;
-
-    assert(q->count >= 0);
-
-    while (shared_data != OK) {
+    while (q->count == 0 || shared_data == OK) {
         pthread_cond_wait(&cond, &mutex);
-    }
-
-    if (q->count == 0) {
-        pthread_mutex_unlock(&mutex);
-        return 0;
     }
 
     qnode_t *tmp = q->first;
@@ -146,23 +126,23 @@ int queue_get(queue_t *q, int *val) {
     *val = tmp->val;
     q->first = q->first->next;
 
-    free(tmp);
     q->count--;
     q->get_count++;
 
-    shared_data = NOK;
+    shared_data = OK;
 
     pthread_cond_signal(&cond);
     pthread_mutex_unlock(&mutex);
+
+    free(tmp);
     return 1;
 }
 
-
 void queue_print_stats(queue_t *q) {
-    pthread_mutex_lock(&mutex);
+    //pthread_mutex_lock(&mutex);
 	printf("queue stats: current size %d; attempts: (%ld %ld %ld); counts (%ld %ld %ld)\n",
 		q->count,
 		q->add_attempts, q->get_attempts, q->add_attempts - q->get_attempts,
 		q->add_count, q->get_count, q->add_count -q->get_count);
-    pthread_mutex_unlock(&mutex);
+    //pthread_mutex_unlock(&mutex);
 }

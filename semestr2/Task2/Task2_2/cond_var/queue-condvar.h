@@ -23,7 +23,6 @@ typedef struct _Queue {
 	int count;
 	int max_count;
 
-	// queue statistics
 	long add_attempts;
 	long get_attempts;
 	long add_count;
@@ -36,6 +35,6 @@ int queue_add(queue_t *q, int val);
 int queue_get(queue_t *q, int *val);
 void queue_print_stats(queue_t *q);
 void init_mutex();
-void destroy_sem();
+void destroy_mutex();
 #endif		// __FITOS_QUEUE_H__
 

@@ -23,7 +23,6 @@ typedef struct _Queue {
 	int count;
 	int max_count;
 
-	// queue statistics
 	long add_attempts;
 	long get_attempts;
 	long add_count;
