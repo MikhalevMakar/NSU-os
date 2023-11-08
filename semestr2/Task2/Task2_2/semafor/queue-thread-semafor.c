@@ -58,7 +58,7 @@ void* writer(void *arg) {
 	queue_t *q = (queue_t *)arg;
 	printf("writer [%d %d %d]\n", getpid(), getppid(), gettid());
 
-	set_cpu(1);
+	set_cpu(2);
 
 	while (true) {
 		int ok = queue_add(q, i);
@@ -88,7 +88,7 @@ int main() {
 
 	printf("main [%d %d %d]\n", getpid(), getppid(), gettid());
 
-	q = queue_init(1000);
+	q = queue_init(1000000);
     init_sem();
     err = pthread_create(&tid_writer, NULL, writer, q);
 	if (err) {
@@ -97,7 +97,7 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-//	sched_yield();
+	sched_yield();
 
     err = pthread_create(&tid_reader, NULL, reader, q);
 	if (err) {

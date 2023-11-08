@@ -4,28 +4,27 @@
 #include <stdbool.h>
 #include <semaphore.h>
 #include "queue-semafor.h"
+#include <fcntl.h>
 
-sem_t semaphore;
+sem_t *semaphore;
+
 volatile int stop_flag = false;
 
-enum { SEM_FAILED = -1; };
-
 void *qmonitor(void *arg) {
-	queue_t *q = (queue_t *)arg;
-
-	printf("qmonitor: [%d %d %d]\n", getpid(), getppid(), gettid());
-
-	while (!stop_flag) {
-		queue_print_stats(q);
-		sleep(1);
-	}
-
-	return NULL;
+    queue_t *q = (queue_t *)arg;
+    printf("qmonitor: [%d %d %d]\n", getpid(), getppid(), gettid());
+    while (!stop_flag) {
+        queue_print_stats(q);
+        sleep(1);
+    }
+    return NULL;
 }
 
 void init_sem() {
-    int err = sem_init(&semaphore, 1, 1);
-    if (err) printf("main: sem_init() failed: %s\n", strerror(err));
+    int err = sem_init(semaphore, 1, 1);
+     if (err != 0) {
+        perror("sem_init");
+    }
 }
 
 queue_t* queue_init(int max_count) {
@@ -69,8 +68,8 @@ void queue_destroy(queue_t *q) {
 }
 
 void destroy_sem() {
-    int err = sem_destroy(&semaphore);;
-    if(err) fprintf(stderr, "sem_destroy: failed %s\n", strerror(err));
+    sem_close(semaphore);
+    sem_unlink("/my_shared_semaphore");
 }
 
 int queue_add(queue_t *q, int val) {
@@ -82,14 +81,14 @@ int queue_add(queue_t *q, int val) {
     new->val = val;
 	new->next = NULL;
 
-    sem_wait(&semaphore);
+    sem_wait(semaphore);
 	q->add_attempts++;
 
 	assert(q->count <= q->max_count);
 
 	if (q->count == q->max_count) {
         free(new);
-        sem_post(&semaphore);
+        sem_post(semaphore);
         return 0;
     }
 
@@ -102,34 +101,36 @@ int queue_add(queue_t *q, int val) {
 
 	q->count++;
 	q->add_count++;
-    sem_post(&semaphore);
+    sem_post(semaphore);
 	return 1;
 }
 
 int queue_get(queue_t *q, int *val) {
-    sem_wait(&semaphore);
+    sem_wait(semaphore);
 	q->get_attempts++;
+
 	assert(q->count >= 0);
 
 	if (q->count == 0) {
-       sem_post(&semaphore);
-       return 0;
+       sem_post(semaphore);
+        return 0;
     }
+
 	qnode_t *tmp = q->first;
+
+	*val = tmp->val;
 	q->first = q->first->next;
+
+	free(tmp);
 	q->count--;
 	q->get_count++;
-    sem_post(&semaphore);
-	*val = tmp->val;
-    free(tmp);
-    return 1;
+    sem_post(semaphore);
+	return 1;
 }
 
 void queue_print_stats(queue_t *q) {
-    sem_wait(&semaphore);
 	printf("queue stats: current size %d; attempts: (%ld %ld %ld); counts (%ld %ld %ld)\n",
 		q->count,
 		q->add_attempts, q->get_attempts, q->add_attempts - q->get_attempts,
 		q->add_count, q->get_count, q->add_count -q->get_count);
-   sem_post(&semaphore);
 }
