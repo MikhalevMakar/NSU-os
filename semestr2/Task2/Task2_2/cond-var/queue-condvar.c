@@ -78,11 +78,11 @@ void queue_destroy(queue_t *q) {
     }
 }
 
-
 void destroy_mutex() {
     int err = pthread_mutex_destroy(&mutex);
     if(err) fprintf(stderr, "pthread_spin_destroy: failed %s\n", strerror(err));
 }
+
 int queue_add(queue_t *q, int val) {
     pthread_mutex_lock(&mutex);
     while (q->count == q->max_count || shared_data == NOK) {

@@ -82,7 +82,7 @@ int main() {
 
 	printf("main [%d %d %d]\n", getpid(), getppid(), gettid());
 
-	q = queue_init(10000000);
+	q = queue_init(100000000);
 
     err = pthread_create(&tid_writer, NULL, writer, q);
 	if (err) {
@@ -97,10 +97,8 @@ int main() {
 		printf("main: pthread_create() failed: %s\n", strerror(err));
 		return EXIT_FAILURE;
 	}
-
-    usleep(400);
-    pthread_kill(tid_reader, SIGINT);
-    pthread_kill(tid_writer, SIGINT);
+//    pthread_kill(tid_reader, SIGINT);
+//    pthread_kill(tid_writer, SIGINT);
     void* ret_val;
     err = pthread_join(tid_reader, &ret_val);
     if (err)

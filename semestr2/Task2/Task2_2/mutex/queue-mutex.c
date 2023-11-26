@@ -19,7 +19,10 @@ void *qmonitor(void *arg) {
 }
 
 void init_mutex() {
-    int err = pthread_mutex_init(&mutex, NULL);
+    thread_mutexattr_t * att;
+    pthread_mutexattr_setpshared(&att, PTHREAD_PROCESS_SHARED);
+    int err = pthread_mutex_init(&mutex, &att);
+
     if (err) printf("main: pthread_mutex_init() failed: %s\n", strerror(err));
 }
 

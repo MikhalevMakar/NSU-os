@@ -5,6 +5,11 @@
 #include "queue.h"
 
 volatile int stop_flag = false;
+struct timespec currentTime;
+
+void get_current_time() {
+    clock_gettime(CLOCK_REALTIME, &currentTime);
+}
 
 void *qmonitor(void *arg) {
 	queue_t *q = (queue_t *)arg;
@@ -61,11 +66,12 @@ void queue_destroy(queue_t *q) {
 }
 
 int queue_add(queue_t *q, int val) {
-	q->add_attempts++;
+    assert(q->count <= q->max_count);
 
-	assert(q->count <= q->max_count);
-
+    q->add_attempts++;
 	if (q->count == q->max_count) return 0;
+
+    printf("ADD - queue stats: current size %d\n", q->count);
 
 	qnode_t *new = malloc(sizeof(qnode_t));
 	if (!new) {
@@ -86,15 +92,23 @@ int queue_add(queue_t *q, int val) {
 	q->count++;
 	q->add_count++;
 
+//    get_current_time();
+//    printf("ADD - current time after: %ld.%09ld seconds\n", currentTime.tv_sec, currentTime.tv_nsec);
+
 	return 1;
 }
 
 int queue_get(queue_t *q, int *val) {
+//    get_current_time();
+//    printf("GET - current time before: %ld.%09ld seconds\n", currentTime.tv_sec, currentTime.tv_nsec);
+    assert(q->count <= q->max_count);
+
 	q->get_attempts++;
 
 	assert(q->count >= 0);
 
 	if (q->count == 0) return 0;
+    printf("GET - queue stats: current size %d\n", q->count);
 
 	qnode_t *tmp = q->first;
 
@@ -105,6 +119,8 @@ int queue_get(queue_t *q, int *val) {
 	q->count--;
 	q->get_count++;
 
+//    get_current_time();
+//    printf("GET - current time after: %ld.%09ld seconds\n", currentTime.tv_sec, currentTime.tv_nsec);
 	return 1;
 }
 
