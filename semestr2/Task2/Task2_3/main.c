@@ -10,18 +10,18 @@
 enum {
     SIZE_WORD = 100,
     SIZE_STORAGE = 20000,
-    STOPPING_ORDER = 10000,
     COUNT_THREADS = 7,
     MIN_SIZE_LIST = 3,
-    LOCK_SUCCESS = 0
 };
+
 enum num_thread {
-    INCREASING = 0,
-    DECREASING = 1,
-    EQUALS = 2,
-    CHECK_INCREASING = 3,
-    CHECK_DECREASING = 4,
-    CHECK_EQUALS = 5
+    INCREASING ,
+    DECREASING ,
+    EQUALS,
+    RANDOM_SWAP_1,
+    RANDOM_SWAP_2,
+    RANDOM_SWAP_3,
+    MONITOR
 };
 
 typedef struct _Node {
@@ -33,6 +33,11 @@ typedef struct _Node {
 typedef struct _Storage {
     Node *first;
 }Storage;
+
+typedef struct Context {
+    enum num_thread thread;
+    Storage* storage;
+}Context;
 
 _Atomic int count_increment[COUNT_THREADS] = {0};
 
@@ -84,17 +89,6 @@ void print_storage(Storage* storage) {
     }
 }
 
-void permit_live_lock() {
-    usleep(random() % STOPPING_ORDER);
-}
-
-bool try_lock_mutex(pthread_mutex_t* mutex) {
-   int err = pthread_mutex_trylock(mutex);
-   if(err != LOCK_SUCCESS) printf("failed lock mutex\n");
-
-   return err == LOCK_SUCCESS;
-}
-
 void* find_increasing(void* args) {
     Storage* storage = (Storage*)args;
 
@@ -107,15 +101,15 @@ void* find_increasing(void* args) {
         }
         while (node->next != NULL) {
             tmp = node;
-            if(try_lock_mutex(&(tmp->sync))) {
-                next = node->next;
-                if (try_lock_mutex(&(next->sync))) {
-                    if (strlen(node->value) < strlen(next->value)) ++counter;
-                    node = node->next;
-                    pthread_mutex_unlock(&(next->sync));
-                }
-                pthread_mutex_unlock(&(tmp->sync));
-            }
+            pthread_mutex_lock(&(tmp->sync));
+            next = node->next;
+            pthread_mutex_lock(&(next->sync));
+
+            if (strlen(node->value) < strlen(next->value)) ++counter;
+
+            node = node->next;
+            pthread_mutex_unlock(&(next->sync));
+            pthread_mutex_unlock(&(tmp->sync));
         }
         ++count_increment[INCREASING];
     }
@@ -135,14 +129,15 @@ void* find_decreasing(void* args) {
             tmp = node;
             pthread_mutex_lock(&(tmp->sync));
             next = node->next;
-            if(try_lock_mutex(&(next->sync))) {
-                if (strlen(node->value) > strlen(next->value)) ++counter;
-                pthread_mutex_unlock(&(next->sync));
-            }
+            pthread_mutex_lock(&(next->sync));
+
+            if (strlen(node->value) < strlen(next->value)) ++counter;
+
             node = node->next;
+            pthread_mutex_unlock(&(next->sync));
             pthread_mutex_unlock(&(tmp->sync));
         }
-        ++count_increment[EQUALS];
+        ++count_increment[DECREASING];
     }
 }
 
@@ -160,11 +155,12 @@ void* find_equals(void* args) {
             tmp = node;
             pthread_mutex_lock(&(tmp->sync));
             next = node->next;
-            if(try_lock_mutex(&(next->sync))) {
-                if (strlen(node->value) == strlen(next->value)) ++counter;
-                pthread_mutex_unlock(&(next->sync));
-            }
+            pthread_mutex_lock(&(next->sync));
+
+            if (strlen(node->value) == strlen(next->value)) ++counter;
+
             node = node->next;
+            pthread_mutex_unlock(&(next->sync));
             pthread_mutex_unlock(&(tmp->sync));
         }
         ++count_increment[EQUALS];
@@ -172,11 +168,20 @@ void* find_equals(void* args) {
 }
 
 void swap_nodes(Node* prev, Node* cur, Node* future) {
+    pthread_mutex_lock(&(prev->sync));
+    Node* node = prev;
+    pthread_mutex_lock(&(node->next->sync));
+    pthread_mutex_lock(&(node->next->next->sync));
+
     assert(prev != NULL && cur != NULL && future != NULL);
     prev->next = future;
     Node* tmp = future->next;
     future->next = cur;
     cur->next = tmp;
+
+    pthread_mutex_unlock(&(node->next->next->sync));
+    pthread_mutex_unlock(&(node->next->sync));
+    pthread_mutex_unlock(&(node->sync));
 }
 
 int number_random_node() {
@@ -189,8 +194,10 @@ int number_random_node() {
 }
 
 void* random_swap(void* args) {
-     Storage* storage = (Storage*)args;
-     assert(storage != NULL);
+    Context* context = (Context*)args;
+    Storage* storage = context->storage;
+    printf("number thread %d\n", context->thread);
+    assert(storage != NULL);
 
     while(true) {
          Node *prev = storage->first;
@@ -201,24 +208,29 @@ void* random_swap(void* args) {
 
          int index = number_random_node();
 
-         Node *current = prev->next, *future = prev->next->next;
+         Node *current = prev->next, *future = prev->next->next, *node;
 
          for (int i = 0; i < index && future != NULL; ++i) {
-             Node* node = prev;
-             pthread_mutex_lock(&(node->sync));
-             if (try_lock_mutex(&(node->next->sync))) {
-                 if (try_lock_mutex(&(node->next->next->sync))) {
-                     prev = current;
-                     current = current->next;
-                     future = future->next;
-                     pthread_mutex_unlock(&(node->next->next->sync));
-                 }
-                 pthread_mutex_unlock(&(node->next->sync));
-             }
+
+             pthread_mutex_lock(&(prev->sync));
+             node = prev;
+
+             pthread_mutex_lock(&(node->next->sync));
+
+             pthread_mutex_lock(&(node->next->next->sync));
+
+             prev = current;
+             current = current->next;
+
+             future = future->next;
+
+             pthread_mutex_unlock(&(node->next->next->sync));
+             pthread_mutex_unlock(&(node->next->sync));
              pthread_mutex_unlock(&(node->sync));
          }
 
          swap_nodes(prev, current, future);
+         ++count_increment[context->thread];
     }
 }
 
@@ -232,14 +244,14 @@ void* monitor(void *arg) {
 	while (true) {
         printf("count INCREASING: %d,"
                " DECREASING %d, EQUALS %d,"
-               " CHECK_INCREASING %d,"
-               " CHECK_DECREASING %d,"
-               " CHECK_EQUALS %d\n", count_increment[INCREASING],
-                                     count_increment[DECREASING],
-                                     count_increment[EQUALS],
-                                     count_increment[CHECK_INCREASING],
-                                     count_increment[CHECK_DECREASING],
-                                     count_increment[CHECK_EQUALS]);
+               " RANDOM_SWAP_1 %d,"
+               " RANDOM_SWAP_2 %d,"
+               " RANDOM_SWAP_3 %d\n", count_increment[INCREASING],
+                                      count_increment[DECREASING],
+                                      count_increment[EQUALS],
+                                      count_increment[RANDOM_SWAP_1],
+                                      count_increment[RANDOM_SWAP_2],
+                                      count_increment[RANDOM_SWAP_3]);
 		sleep(1);
 	}
 }
@@ -252,17 +264,20 @@ int main() {
 
     pthread_t tids[COUNT_THREADS];
 
-    pthread_create(&tids[0], NULL, find_increasing, storage);
-    //pthread_create(&tids[1], NULL, find_decreasing, storage);
-//    pthread_create(&tids[2], NULL, find_equals, storage);
-    pthread_create(&tids[1], NULL, find_decreasing, storage);
+    pthread_create(&tids[INCREASING], NULL, find_increasing, storage);
+    pthread_create(&tids[DECREASING], NULL, find_decreasing, storage);
+    pthread_create(&tids[EQUALS], NULL, find_equals, storage);
 
-    pthread_create(&tids[3], NULL, random_swap, storage);
-//    pthread_create(&tids[4], NULL, random_swap, storage);
-//    pthread_create(&tids[5], NULL, random_swap, storage);
+    Context context1 = {RANDOM_SWAP_1, storage};
+    Context context2 = {RANDOM_SWAP_2, storage};
+    Context context3 = {RANDOM_SWAP_3, storage};
 
-    pthread_create(&tids[6], NULL, monitor, storage);
+    pthread_create(&tids[RANDOM_SWAP_1], NULL, random_swap, (void*) &context1);
+    pthread_create(&tids[RANDOM_SWAP_2], NULL, random_swap, (void*) &context2);
+    pthread_create(&tids[RANDOM_SWAP_3], NULL, random_swap, (void*) &context3);
 
-    join_thread(tids[6]);
+    pthread_create(&tids[MONITOR], NULL, monitor, storage);
+
+    join_thread(tids[MONITOR]);
     return EXIT_FAILURE;
 }
