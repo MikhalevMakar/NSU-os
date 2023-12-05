@@ -9,7 +9,7 @@
 
 enum {
     SIZE_WORD = 100,
-    SIZE_STORAGE = 20000,
+    SIZE_STORAGE = 100000,
     COUNT_THREADS = 7,
     MIN_SIZE_LIST = 3,
 };
@@ -168,12 +168,13 @@ void* find_equals(void* args) {
 }
 
 void swap_nodes(Node* prev, Node* cur, Node* future) {
-    pthread_mutex_lock(&(prev->sync));
-    Node* node = prev;
-    pthread_mutex_lock(&(node->next->sync));
-    pthread_mutex_lock(&(node->next->next->sync));
-
     assert(prev != NULL && cur != NULL && future != NULL);
+
+    pthread_mutex_lock(&(prev->sync));
+    pthread_mutex_lock(&(prev->next->sync));
+    pthread_mutex_lock(&(prev->next->next->sync));
+
+    Node* node = prev;
     prev->next = future;
     Node* tmp = future->next;
     future->next = cur;
@@ -213,15 +214,12 @@ void* random_swap(void* args) {
          for (int i = 0; i < index && future != NULL; ++i) {
 
              pthread_mutex_lock(&(prev->sync));
+             pthread_mutex_lock(&(prev->next->sync));
+             pthread_mutex_lock(&(prev->next->next->sync));
+
              node = prev;
-
-             pthread_mutex_lock(&(node->next->sync));
-
-             pthread_mutex_lock(&(node->next->next->sync));
-
-             prev = current;
+             prev = prev->next;
              current = current->next;
-
              future = future->next;
 
              pthread_mutex_unlock(&(node->next->next->sync));
