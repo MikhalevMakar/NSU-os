@@ -9,10 +9,22 @@
 
 enum {
     SIZE_WORD = 100,
-    SIZE_STORAGE = 10,
-    STOPPING_ORDER = 10000000,
-    COUNT_THREADS = 7
+    SIZE_STORAGE = 1000,
+    COUNT_THREADS = 7,
+    MIN_SIZE_LIST = 3,
 };
+
+enum num_thread {
+    INCREASING ,
+    DECREASING ,
+    EQUALS,
+    RANDOM_SWAP_1,
+    RANDOM_SWAP_2,
+    RANDOM_SWAP_3,
+    MONITOR
+};
+
+_Atomic int count_increment[COUNT_THREADS] = {0};
 
 #define THREAD_CHECK_INCR "check_and_move_increasing"
 #define THREAD_CHECK_DECR "check_and_move_decreasing"
@@ -28,8 +40,10 @@ typedef struct _Storage {
     Node *first;
 }Storage;
 
-_Atomic int count_increment = ATOMIC_VAR_INIT(0);
-_Atomic int stop_flag = ATOMIC_VAR_INIT(0);
+typedef struct Context {
+    enum num_thread thread;
+    Storage* storage;
+}Context;
 
 Node* create_node(char* line) {
     Node* node = malloc(sizeof(Node));
@@ -79,61 +93,79 @@ void print_storage(Storage* storage) {
     }
 }
 
-bool try_lock_spinlock(pthread_spinlock_t* spin_lock, char* name_thread) {
-   int err = pthread_spin_trylock(spin_lock);
-   if(err) printf("failed lock spinlock: %s\n", name_thread);
-
-   return err ? false : true;
-}
-
 void* find_increasing(void* args) {
     Storage* storage = (Storage*)args;
 
     while(true) {
-        Node* node = storage->first;
+        int counter = 0;
+        Node* node = storage->first, *next, *tmp;
         if (node == NULL || node->next == NULL) {
             fprintf(stderr, "warn: storage is empty\n");
             continue;
         }
-        size_t previous_length = strlen(node->value);
-        int counter = 0;
-        while (node != NULL) {
+        while (true) {
             pthread_spin_lock(&(node->sync));
-            size_t size_line = strlen(node->value);
-            pthread_spin_unlock(&(node->sync));
-            if (previous_length < size_line) ++counter;
+            printf("lock current node %d, %p\n", INCREASING, &(node->sync));
+            tmp = node;
+
+            next = node->next;
+            if(next == NULL) {
+                pthread_spin_unlock(&(node->sync));
+                break;
+            }
+
+            pthread_spin_lock(&(next->sync));
+
+            printf("lock future node %d, %p\n", INCREASING, &(next->sync));
+
+            if (strlen(node->value) < strlen(next->value)) ++counter;
+
             node = node->next;
-            previous_length = size_line;
+
+            printf("UNlock current node %d, %p\n", INCREASING, &(next->sync));
+            pthread_spin_unlock(&(next->sync));
+
+            printf("UNlock future node %d, %p\n", INCREASING, &(tmp->sync));
+            pthread_spin_unlock(&(tmp->sync));
         }
-//        printf("number of pairs of strings "
-//               "in ascending order of length %d\n", counter);
-        ++count_increment;
+        ++count_increment[INCREASING];
     }
-    return NULL;
 }
 
 void* find_decreasing(void* args) {
     Storage* storage = (Storage*)args;
 
     while(true) {
-        Node* node = storage->first;
+        int counter = 0;
+        Node* node = storage->first, *next, *tmp;
         if (node == NULL || node->next == NULL) {
             fprintf(stderr, "warn: storage is empty\n");
             continue;
         }
-        size_t previous_length = strlen(node->value);
-        int counter = 0;
-        while (node != NULL) {
+        while (true) {
             pthread_spin_lock(&(node->sync));
-            size_t size_line = strlen(node->value);
-            pthread_spin_unlock(&(node->sync));
-            if (previous_length > size_line) ++counter;
+            printf("lock current node %d, %p\n", DECREASING, &(node->sync));
+
+            tmp = node;
+            next = node->next;
+            if(next == NULL) {
+                pthread_spin_unlock(&(node->sync));
+                break;
+            }
+            pthread_spin_lock(&(next->sync));
+            printf("lock future node %d, %p\n", DECREASING, &(next->sync));
+
+            if (strlen(node->value) < strlen(next->value)) ++counter;
+
             node = node->next;
-            previous_length = size_line;
+
+            printf("UNlock current node %d, %p\n", DECREASING, &(next->sync));
+            pthread_spin_unlock(&(next->sync));
+
+            printf("UNlock future node %d, %p\n", DECREASING, &(tmp->sync));
+            pthread_spin_unlock(&(tmp->sync));
         }
-//        printf("number of pairs of strings "
-//               "in descending order of length %d\n", counter);
-        ++count_increment;
+        ++count_increment[DECREASING];
     }
 }
 
@@ -141,153 +173,117 @@ void* find_equals(void* args) {
     Storage* storage = (Storage*)args;
 
     while(true) {
-        Node* node = storage->first;
+        int counter = 0;
+        Node* node = storage->first, *next, *tmp;
         if (node == NULL || node->next == NULL) {
             fprintf(stderr, "warn: storage is empty\n");
             continue;
         }
-        size_t previous_length = strlen(node->value);
-        int counter = 0;
-        while (node != NULL) {
-            pthread_spin_lock(&(node->sync));
-            size_t size_line = strlen(node->value);
-            pthread_spin_unlock(&(node->sync));
-            if (previous_length == size_line) ++counter;
-            node = node->next;
-            previous_length = size_line;
-        }
-//        printf("number of pairs of strings"
-//               " having the same length %d\n", counter);
-        ++count_increment;
-    }
-}
-
-void* check_and_move_increasing(void* args) {
-    Storage* storage = (Storage*)args;
-    Node *future_node, *prev_node;
-
-    while(true) {
-         Node* node = storage->first;
-         if (node == NULL || node->next == NULL) {
-            fprintf(stderr, "warn: storage is empty\n");
-            continue;
-        }
-
-        future_node = node->next;
-        prev_node = node;
-        while (future_node != NULL) {
+        while (true) {
 
             pthread_spin_lock(&(node->sync));
-            pthread_spin_lock(&(future_node->sync));
-            if (strlen(node->value) > strlen(future_node->value)) {
-                ++count_increment;
+            printf("lock current node %d %p\n", EQUALS, &(node->sync));
 
-                if (node == storage->first) {
-                    storage->first = future_node;
-                }
-                else if (try_lock_spinlock(&(prev_node->sync), THREAD_CHECK_INCR)) {
-                    prev_node->next = future_node;
-                    pthread_spin_unlock(&(prev_node->sync));
-                    usleep(random() % STOPPING_ORDER);
-                    node->next = future_node->next;
-                    future_node->next = node;
-                }
-            }
-            pthread_spin_unlock(&(node->sync));
-            pthread_spin_unlock(&(future_node->sync));
+            tmp = node;
+            next = node->next;
 
-            prev_node = node;
-            node = node->next;
-            future_node = future_node->next;
-        }
-          //printf("%s \n", THREAD_CHECK_INCR);
-    }
-}
-
-void* check_and_move_decreasing(void* args) {
-    Storage* storage = (Storage*)args;
-    Node *future_node, *prev_node;
-
-    while(true) {
-         Node* node = storage->first;
-         if (node == NULL || node->next == NULL) {
-            fprintf(stderr, "warn: storage is empty\n");
-            continue;
-        }
-
-        future_node = node->next;
-        while (future_node != NULL) {
-            pthread_spin_lock(&(node->sync));
-            pthread_spin_lock(&(future_node->sync));
-
-            if (strlen(node->value) < strlen(future_node->value)) {
-                ++count_increment;
-
-                if (node == storage->first) {
-                    storage->first = future_node;
-                } else {
-                    prev_node->next = future_node;
-                }
-                node->next = future_node->next;
-                future_node->next = node;
-            }
-
-            pthread_spin_unlock(&(node->sync));
-            pthread_spin_unlock(&(future_node->sync));
-
-            prev_node = node;
-            node = future_node;
-            future_node = future_node->next;
-        }
-         //printf("%s \n", THREAD_CHECK_DECR);
-    }
-}
-
-void* check_and_move_equals(void* args) {
-    Storage* storage = (Storage*)args;
-
-    Node *future_node, *cur_node, *node;
-    while(true) {
-         node = storage->first;
-         if (node == NULL || node->next == NULL) {
-            fprintf(stderr, "warn: storage is empty\n");
-            continue;
-        }
-
-        cur_node = node->next;
-        future_node = node->next->next;
-
-        while (future_node != NULL) {
-            pthread_spin_lock(&(node->sync));
-            if(!try_lock_spinlock(&cur_node->sync, THREAD_CHECK_EQ)) {
+            if(next == NULL) {
                 pthread_spin_unlock(&(node->sync));
-                usleep(random() % STOPPING_ORDER);
-                continue;
-            }
-            if(!try_lock_spinlock(&(future_node->sync), THREAD_CHECK_EQ)) {
-                pthread_spin_unlock(&(node->sync));
-                pthread_spin_unlock(&(cur_node->sync));
-                usleep(random() % STOPPING_ORDER);
-                continue;
-            }
-            if (strlen(node->value) == strlen(future_node->value)) {
-                ++count_increment;
-
-                node->next = future_node;
-                cur_node->next = future_node->next;
-                future_node->next = cur_node;
-
+                break;
             }
 
-            pthread_spin_unlock(&(node->sync));
-            pthread_spin_unlock(&(cur_node->sync));
-            pthread_spin_unlock(&(future_node->sync));
+            pthread_spin_lock(&(next->sync));
+            printf("lock future node %d, %p\n", EQUALS, &(next->sync));
 
-            node= node->next;
-            cur_node = node->next;
-            future_node = cur_node->next;
+            if (strlen(node->value) == strlen(next->value)) ++counter;
+
+            node = node->next;
+            printf("UNlock current node %d, %p\n", EQUALS, &(next->sync));
+            pthread_spin_unlock(&(next->sync));
+
+            printf("UNlock future node %d, %p\n", EQUALS, &(tmp->sync));
+            pthread_spin_unlock(&(tmp->sync));
         }
-        //printf("%s \n", THREAD_CHECK_EQ);
+        ++count_increment[EQUALS];
+    }
+}
+
+void swap_nodes(Node* prev, Node* cur, Node* future) {
+    printf("swap nodes\n");
+    assert(prev != NULL && cur != NULL && future != NULL);
+    prev->next = future;
+    Node* tmp = future->next;
+    future->next = cur;
+    cur->next = tmp;
+}
+
+int number_random_node() {
+    int index;
+    do {
+        unsigned int seed = (unsigned int) time(NULL);
+        index = rand_r(&seed) % (SIZE_STORAGE - 2);
+    } while (index < MIN_SIZE_LIST);
+    return index;
+}
+
+void* random_swap(void* args) {
+    Context* context = (Context*)args;
+    Storage* storage = context->storage;
+    printf("number thread %d\n", context->thread);
+    assert(storage != NULL);
+
+    while(true) {
+         Node *prev = storage->first;
+         if (prev == NULL || prev->next == NULL) {
+            fprintf(stderr, "warn: there are less, than two items in the value\n");
+            continue;
+         }
+
+         int index = number_random_node();
+
+         Node *current = prev->next, *future = prev->next->next, *node;
+
+         for (int i = 0; i < index; ++i) {
+             pthread_spin_lock(&(prev->sync));
+             printf("lock previous node %d %p\n", context->thread, &(prev->sync));
+
+             if(prev->next == NULL) {
+                 printf("NULL prev->next\n");
+                 pthread_spin_unlock(&(prev->sync));
+                 break;
+             }
+
+             pthread_spin_lock(&(prev->next->sync));
+             printf("lock current node %d %p\n", context->thread, &(prev->next->sync));
+
+             if(prev->next->next == NULL) {
+                 printf("NULL prev->next->next\n");
+                 pthread_spin_unlock(&(prev->next->sync));
+                 pthread_spin_unlock(&(prev->sync));
+                 break;
+             }
+
+             pthread_spin_lock(&(prev->next->next->sync));
+             printf("lock future node %d %p\n", context->thread, &(prev->next->sync));
+             node = prev;
+             if(i == index - 1) swap_nodes(prev, current, future);
+             else {
+                 prev = prev->next;
+                 current = current->next;
+                 future = future->next;
+             }
+
+             printf("UNlock future node %d %p\n", context->thread, &(node->next->next->sync));
+             pthread_spin_unlock(&(node->next->next->sync));
+
+             printf("UNlock current node %d %p\n", context->thread, &(node->next->sync));
+             pthread_spin_unlock(&(node->next->sync));
+
+             printf("UNlock previous node %d %p\n", context->thread, &(node->sync));
+             pthread_spin_unlock(&(node->sync));
+         }
+
+         ++count_increment[context->thread];
     }
 }
 
@@ -299,10 +295,18 @@ void join_thread(pthread_t tid) {
 
 void* monitor(void *arg) {
 	while (true) {
-        printf("count %d\n", count_increment);
+//        printf("count INCREASING: %d,"
+//               " DECREASING %d, EQUALS %d,"
+//               " RANDOM_SWAP_1 %d,"
+//               " RANDOM_SWAP_2 %d,"
+//               " RANDOM_SWAP_3 %d\n", count_increment[INCREASING],
+//                                      count_increment[DECREASING],
+//                                      count_increment[EQUALS],
+//                                      count_increment[RANDOM_SWAP_1],
+//                                      count_increment[RANDOM_SWAP_2],
+//                                      count_increment[RANDOM_SWAP_3]);
 		sleep(1);
 	}
-	return NULL;
 }
 
 int main() {
@@ -313,14 +317,20 @@ int main() {
 
     pthread_t tids[COUNT_THREADS];
 
-    pthread_create(&tids[0], NULL, find_increasing, storage);
-    pthread_create(&tids[1], NULL, find_decreasing, storage);
-    pthread_create(&tids[2], NULL, find_equals, storage);
-    pthread_create(&tids[3], NULL, check_and_move_decreasing, storage);
-    pthread_create(&tids[4], NULL, check_and_move_equals, storage);
-    pthread_create(&tids[5], NULL, check_and_move_increasing, storage);
-    pthread_create(&tids[6], NULL, monitor, storage);
+    pthread_create(&tids[INCREASING], NULL, find_increasing, storage);
+    pthread_create(&tids[DECREASING], NULL, find_decreasing, storage);
+    pthread_create(&tids[EQUALS], NULL, find_equals, storage);
 
-    join_thread(tids[6]);
-    return EXIT_FAILURE;
+    Context context1 = {RANDOM_SWAP_1, storage};
+    Context context2 = {RANDOM_SWAP_2, storage};
+    Context context3 = {RANDOM_SWAP_3, storage};
+
+    pthread_create(&tids[RANDOM_SWAP_1], NULL, random_swap, (void*) &context1);
+    pthread_create(&tids[RANDOM_SWAP_2], NULL, random_swap, (void*) &context2);
+    pthread_create(&tids[RANDOM_SWAP_3], NULL, random_swap, (void*) &context3);
+
+    pthread_create(&tids[MONITOR], NULL, monitor, storage);
+
+    join_thread(tids[MONITOR]);
+    return EXIT_SUCCESS;
 }
