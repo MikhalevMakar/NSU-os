@@ -9,7 +9,7 @@
 
 enum {
     SIZE_WORD = 100,
-    SIZE_STORAGE = 1000,
+    SIZE_STORAGE = 10,
     COUNT_THREADS = 7,
     MIN_SIZE_LIST = 3,
 };
@@ -144,7 +144,7 @@ void* find_decreasing(void* args) {
         }
         while (true) {
             pthread_rwlock_rdlock(&(node->sync));
-            printf("lock current node %d, %p\n", DECREASING, &(node->sync));
+//            printf("lock current node %d, %p\n", DECREASING, &(node->sync));
             tmp = node;
 
             next = node->next;
@@ -155,7 +155,7 @@ void* find_decreasing(void* args) {
 
             pthread_rwlock_rdlock(&(next->sync));
 
-            printf("lock future node %d, %p\n", DECREASING, &(next->sync));
+//            printf("lock future node %d, %p\n", DECREASING, &(next->sync));
 
             if (strlen(node->value) > strlen(next->value)) ++counter;
 
@@ -200,10 +200,10 @@ void* find_equals(void* args) {
 
             node = node->next;
 
-            printf("UNlock current node %d, %p\n", EQUALS, &(next->sync));
+//            printf("UNlock current node %d, %p\n", EQUALS, &(next->sync));
             pthread_rwlock_unlock(&(next->sync));
 
-            printf("UNlock future node %d, %p\n", EQUALS, &(tmp->sync));
+//            printf("UNlock future node %d, %p\n", EQUALS, &(tmp->sync));
             pthread_rwlock_unlock(&(tmp->sync));
         }
         ++count_increment[EQUALS];
@@ -211,7 +211,7 @@ void* find_equals(void* args) {
 }
 
 void swap_nodes(Node* prev, Node* cur, Node* future) {
-    printf("swap nodes\n");
+//    printf("swap nodes\n");
     assert(prev != NULL && cur != NULL && future != NULL);
     prev->next = future;
     Node* tmp = future->next;
@@ -266,7 +266,7 @@ void* random_swap(void* args) {
              }
 
              pthread_rwlock_wrlock(&(prev->next->next->sync));
-             printf("lock future node %d %p\n", context->thread, &(prev->next->sync));
+//             printf("lock future node %d %p\n", context->thread, &(prev->next->sync));
              node = prev;
              if(i == index - 1) swap_nodes(prev, current, future);
              else {
@@ -275,13 +275,13 @@ void* random_swap(void* args) {
                  future = future->next;
              }
 
-             printf("UNlock future node %d %p\n", context->thread, &(node->next->next->sync));
+//             printf("UNlock future node %d %p\n", context->thread, &(node->next->next->sync));
              pthread_rwlock_unlock(&(node->next->next->sync));
 
-             printf("UNlock current node %d %p\n", context->thread, &(node->next->sync));
+//             printf("UNlock current node %d %p\n", context->thread, &(node->next->sync));
              pthread_rwlock_unlock(&(node->next->sync));
 
-             printf("UNlock previous node %d %p\n", context->thread, &(node->sync));
+//             printf("UNlock previous node %d %p\n", context->thread, &(node->sync));
              pthread_rwlock_unlock(&(node->sync));
          }
 
@@ -297,16 +297,16 @@ void join_thread(pthread_t tid) {
 
 void* monitor(void *arg) {
 	while (true) {
-//        printf("count INCREASING: %d,"
-//               " DECREASING %d, EQUALS %d,"
-//               " RANDOM_SWAP_1 %d,"
-//               " RANDOM_SWAP_2 %d,"
-//               " RANDOM_SWAP_3 %d\n", count_increment[INCREASING],
-//                                      count_increment[DECREASING],
-//                                      count_increment[EQUALS],
-//                                      count_increment[RANDOM_SWAP_1],
-//                                      count_increment[RANDOM_SWAP_2],
-//                                      count_increment[RANDOM_SWAP_3]);
+        printf("count INCREASING: %d,"
+               " DECREASING %d, EQUALS %d,"
+               " RANDOM_SWAP_1 %d,"
+               " RANDOM_SWAP_2 %d,"
+               " RANDOM_SWAP_3 %d\n", count_increment[INCREASING],
+                                      count_increment[DECREASING],
+                                      count_increment[EQUALS],
+                                      count_increment[RANDOM_SWAP_1],
+                                      count_increment[RANDOM_SWAP_2],
+                                      count_increment[RANDOM_SWAP_3]);
 		sleep(1);
 	}
 }

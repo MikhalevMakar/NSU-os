@@ -9,7 +9,7 @@
 
 enum {
     SIZE_WORD = 100,
-    SIZE_STORAGE = 1000,
+    SIZE_STORAGE = 10,
     COUNT_THREADS = 7,
     MIN_SIZE_LIST = 3,
 };
@@ -242,19 +242,19 @@ void* random_swap(void* args) {
 
          for (int i = 0; i < index; ++i) {
              pthread_mutex_lock(&(prev->sync));
-             printf("lock previous node %d %p\n", context->thread, &(prev->sync));
+//             printf("lock previous node %d %p\n", context->thread, &(prev->sync));
 
              if(prev->next == NULL) {
-                 printf("NULL prev->next\n");
+//                 printf("NULL prev->next\n");
                  pthread_mutex_unlock(&(prev->sync));
                  break;
              }
 
              pthread_mutex_lock(&(prev->next->sync));
-             printf("lock current node %d %p\n", context->thread, &(prev->next->sync));
+//             printf("lock current node %d %p\n", context->thread, &(prev->next->sync));
 
              if(prev->next->next == NULL) {
-                 printf("NULL prev->next->next\n");
+//                 printf("NULL prev->next->next\n");
                  pthread_mutex_unlock(&(prev->next->sync));
                  pthread_mutex_unlock(&(prev->sync));
                  break;
@@ -270,13 +270,13 @@ void* random_swap(void* args) {
                  future = future->next;
              }
 
-             printf("UNlock future node %d %p\n", context->thread, &(node->next->next->sync));
+//             printf("UNlock future node %d %p\n", context->thread, &(node->next->next->sync));
              pthread_mutex_unlock(&(node->next->next->sync));
 
-             printf("UNlock current node %d %p\n", context->thread, &(node->next->sync));
+//             printf("UNlock current node %d %p\n", context->thread, &(node->next->sync));
              pthread_mutex_unlock(&(node->next->sync));
 
-             printf("UNlock previous node %d %p\n", context->thread, &(node->sync));
+//             printf("UNlock previous node %d %p\n", context->thread, &(node->sync));
              pthread_mutex_unlock(&(node->sync));
          }
 
@@ -292,16 +292,16 @@ void join_thread(pthread_t tid) {
 
 void* monitor(void *arg) {
 	while (true) {
-//        printf("count INCREASING: %d,"
-//               " DECREASING %d, EQUALS %d,"
-//               " RANDOM_SWAP_1 %d,"
-//               " RANDOM_SWAP_2 %d,"
-//               " RANDOM_SWAP_3 %d\n", count_increment[INCREASING],
-//                                      count_increment[DECREASING],
-//                                      count_increment[EQUALS],
-//                                      count_increment[RANDOM_SWAP_1],
-//                                      count_increment[RANDOM_SWAP_2],
-//                                      count_increment[RANDOM_SWAP_3]);
+        printf("count INCREASING: %d,"
+               " DECREASING %d, EQUALS %d,"
+               " RANDOM_SWAP_1 %d,"
+               " RANDOM_SWAP_2 %d,"
+               " RANDOM_SWAP_3 %d\n", count_increment[INCREASING],
+                                      count_increment[DECREASING],
+                                      count_increment[EQUALS],
+                                      count_increment[RANDOM_SWAP_1],
+                                      count_increment[RANDOM_SWAP_2],
+                                      count_increment[RANDOM_SWAP_3]);
 		sleep(1);
 	}
 }

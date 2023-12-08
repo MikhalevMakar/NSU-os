@@ -7,8 +7,20 @@
 
 #include "enum_const.h"
 
+typedef struct context_request {
+    char request[MAX_BUFFER_SIZE];
+    char host[SIZE_URL];
+    char path[SIZE_URL];
+    char* url;
+} ContextRequest;
+
+void error(const char *msg) {
+    perror(msg);
+    exit(EXIT_FAILURE);
+}
+
 void server_http_response(int client_socket, const char* content) {
-    const char* response_template = "HTTP/1.1 200 OK\r\n"
+    const char* response_template = "HTTP/1.0 200 OK\r\n"
                                     "Content-Length: %zu\r\n"
                                     "Content-Type: text/html\r\n"
                                     "\r\n"
@@ -21,26 +33,32 @@ void server_http_response(int client_socket, const char* content) {
     write(client_socket, response, response_length);
 }
 
-void server_http_request(int server_socket, char* host, char* path) {
-char request_buffer[MAX_BUFFER_SIZE];
-    ssize_t bytes_sent;
+void server_http_request(int server_socket, ContextRequest* contextRequest) {
+    char request[MAX_BUFFER_SIZE];
+    snprintf(request, MAX_BUFFER_SIZE, "GET / HTTP/1.0\r\nHost: %s\r\n\r\n", contextRequest->host);
 
-    snprintf(request_buffer, sizeof(request_buffer), "GET / HTTP/1.1\r\nHost: ya.ru\r\nContent-Type: application/x-www-form-\\r\n\r\n");
-
-    bytes_sent = send(server_socket, request_buffer, strlen(request_buffer), START_POS_WRITE);
-
-    if (bytes_sent == -1)
+    if (send(server_socket, request, strlen(request), START_POS_WRITE) == SEND_ERROR)
         perror("Error sending HTTP request to the server");
     else
         printf("SUCCESSFUL request: get packet\n");
 }
 
+void receive_response(int sock_fd) {
+    char response[MAX_BUFFER_SIZE];
+    ssize_t bytes_received;
+    while ((bytes_received = recv(sock_fd, response, MAX_BUFFER_SIZE - 1, 0)) > 0) {
+        response[bytes_received] = '\0';
+        printf("%s", response);
+    }
+
+    if (bytes_received < 0)
+        error("Error receiving response");
+}
+
 int create_socket_server(struct sockaddr_in* server_address) {
     int serverSocket;
-    if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == SOCKET_ERROR) {
-        perror("Error creating socket");
-        exit(EXIT_FAILURE);
-    }
+    if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == SOCKET_ERROR)
+        error("Error creating socket");
 
     memset(server_address, 0, sizeof(*server_address));
     server_address->sin_family = AF_INET;
@@ -63,27 +81,21 @@ void init_socket(int serverSocket, struct sockaddr_in* serverAddr) {
     }
 }
 
-int connect_to_remote_server(char *host) {
-    struct addrinfo hints, *res0;
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
+int connect_to_remote_server(char* host) {
+    struct hostent *server = gethostbyname(host);
+    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_fd < 0) {
+        error("Error opening socket");
+    }
 
-    int status = getaddrinfo((char *) host, "http", &hints, &res0);
-    if (status != 0) {
-        freeaddrinfo(res0);
-        return -1;
-    }
-    int dest_socket = socket(res0->ai_family, res0->ai_socktype, res0->ai_protocol);
-    if (dest_socket == SOCKET_ERROR) return SOCKET_ERROR;
-1
-    int err = connect(dest_socket, res0->ai_addr, res0->ai_addrlen);
-    if (err == SOCKET_ERROR) {
-        close(dest_socket);
-        freeaddrinfo(res0);
-        return SOCKET_ERROR;
-    }
-    return dest_socket;
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
+    server_addr.sin_port = htons(PORT);
+
+    if (connect(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+        error("Error connecting");
+
+    return socket_fd;
 }
-
-

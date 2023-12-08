@@ -16,6 +16,7 @@ enum {
 
 enum error {
     SOCKET_ERROR = -1,
+    SEND_ERROR = -1,
     CONNECTION_ERROR = -1,
     ACCEPT_ERROR = -1
 };
