@@ -264,12 +264,9 @@ void* random_swap(void* args) {
 
              pthread_rwlock_wrlock(&(prev->next->next->sync));
              node = prev;
-             if(i == index - 1) swap_nodes(prev, current, future);
-             else {
-                 prev = prev->next;
-                 current = current->next;
-                 future = future->next;
-             }
+             prev = prev->next;
+             current = current->next;
+             future = future->next;
 
              pthread_rwlock_unlock(&(node->next->next->sync));
 

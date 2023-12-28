@@ -9,7 +9,7 @@
 
 enum {
     SIZE_WORD = 100,
-    SIZE_STORAGE = 1000,
+    SIZE_STORAGE = 100,
     COUNT_THREADS = 7,
     MIN_SIZE_LIST = 3,
 };
@@ -75,7 +75,7 @@ void init_storage(Storage* storage) {
     Node* node;
     char new_value[SIZE_WORD];
     for(int i = 1; i <= SIZE_STORAGE; ++i) {
-        snprintf(new_value, sizeof(new_value), "create new node %d", SIZE_STORAGE - i + 1);
+        //printf(new_value, sizeof(new_value), "create new node %d", SIZE_STORAGE - i + 1);
         node = create_node(new_value);
         append_new_node(storage, node);
     }
@@ -84,7 +84,7 @@ void init_storage(Storage* storage) {
 void print_storage(Storage* storage) {
     Node* node = storage->first;
     while(node != NULL) {
-         printf("%s %p\n", node->value, &(node->sync));
+         //printf("%s %p\n", node->value, &(node->sync));
          node = node->next;
     }
 }
@@ -96,13 +96,13 @@ void* find_increasing(void* args) {
         int counter = 0;
         Node* node = storage->first, *next, *tmp;
         if (node == NULL || node->next == NULL) {
-            fprintf(stderr, "warn: storage is empty\n");
+            //printf(stderr, "warn: storage is empty\n");
             continue;
         }
 
         while (true) {
             pthread_mutex_lock(&(node->sync));
-            printf("lock current node %d, %p\n", INCREASING, &(node->sync));
+            //printf("lock current node %d, %p\n", INCREASING, &(node->sync));
             tmp = node;
 
             next = node->next;
@@ -113,16 +113,16 @@ void* find_increasing(void* args) {
 
             pthread_mutex_lock(&(next->sync));
 
-            printf("lock future node %d, %p\n", INCREASING, &(next->sync));
+            //("lock future node %d, %p\n", INCREASING, &(next->sync));
 
             if (strlen(node->value) < strlen(next->value)) ++counter;
 
             node = node->next;
 
-            printf("UNlock current node %d, %p\n", INCREASING, &(next->sync));
+            //printf("UNlock current node %d, %p\n", INCREASING, &(next->sync));
             pthread_mutex_unlock(&(next->sync));
 
-            printf("UNlock future node %d, %p\n", INCREASING, &(tmp->sync));
+            //printf("UNlock future node %d, %p\n", INCREASING, &(tmp->sync));
             pthread_mutex_unlock(&(tmp->sync));
         }
         ++count_increment[INCREASING];
@@ -136,12 +136,12 @@ void* find_decreasing(void* args) {
         int counter = 0;
         Node* node = storage->first, *next, *tmp;
         if (node == NULL || node->next == NULL) {
-            fprintf(stderr, "warn: storage is empty\n");
+            //printf(stderr, "warn: storage is empty\n");
             continue;
         }
         while (true) {
             pthread_mutex_lock(&(node->sync));
-            printf("lock current node %d, %p\n", DECREASING, &(node->sync));
+            //printf("lock current node %d, %p\n", DECREASING, &(node->sync));
 
             tmp = node;
             next = node->next;
@@ -150,16 +150,16 @@ void* find_decreasing(void* args) {
                 break;
             }
             pthread_mutex_lock(&(next->sync));
-            printf("lock future node %d, %p\n", DECREASING, &(next->sync));
+            //printf("lock future node %d, %p\n", DECREASING, &(next->sync));
 
             if (strlen(node->value) < strlen(next->value)) ++counter;
 
             node = node->next;
 
-            printf("UNlock current node %d, %p\n", DECREASING, &(next->sync));
+            //printf("UNlock current node %d, %p\n", DECREASING, &(next->sync));
             pthread_mutex_unlock(&(next->sync));
 
-            printf("UNlock future node %d, %p\n", DECREASING, &(tmp->sync));
+            //printf("UNlock future node %d, %p\n", DECREASING, &(tmp->sync));
             pthread_mutex_unlock(&(tmp->sync));
         }
         ++count_increment[DECREASING];
@@ -173,13 +173,13 @@ void* find_equals(void* args) {
         int counter = 0;
         Node* node = storage->first, *next, *tmp;
         if (node == NULL || node->next == NULL) {
-            fprintf(stderr, "warn: storage is empty\n");
+            //printf(stderr, "warn: storage is empty\n");
             continue;
         }
         while (true) {
 
             pthread_mutex_lock(&(node->sync));
-            printf("lock current node %d %p\n", EQUALS, &(node->sync));
+            //printf("lock current node %d %p\n", EQUALS, &(node->sync));
 
             tmp = node;
             next = node->next;
@@ -190,15 +190,15 @@ void* find_equals(void* args) {
             }
 
             pthread_mutex_lock(&(next->sync));
-            printf("lock future node %d, %p\n", EQUALS, &(next->sync));
+            //printf("lock future node %d, %p\n", EQUALS, &(next->sync));
 
             if (strlen(node->value) == strlen(next->value)) ++counter;
 
             node = node->next;
-            printf("UNlock current node %d, %p\n", EQUALS, &(next->sync));
+            //printf("UNlock current node %d, %p\n", EQUALS, &(next->sync));
             pthread_mutex_unlock(&(next->sync));
 
-            printf("UNlock future node %d, %p\n", EQUALS, &(tmp->sync));
+            //printf("UNlock future node %d, %p\n", EQUALS, &(tmp->sync));
             pthread_mutex_unlock(&(tmp->sync));
         }
         ++count_increment[EQUALS];
@@ -206,7 +206,7 @@ void* find_equals(void* args) {
 }
 
 void swap_nodes(Node* prev, Node* cur, Node* future) {
-    printf("swap nodes\n");
+    //printf("swap nodes\n");
     assert(prev != NULL && cur != NULL && future != NULL);
     prev->next = future;
     Node* tmp = future->next;
@@ -226,13 +226,13 @@ int number_random_node() {
 void* random_swap(void* args) {
     Context* context = (Context*)args;
     Storage* storage = context->storage;
-    printf("number thread %d\n", context->thread);
+    //printf("number thread %d\n", context->thread);
     assert(storage != NULL);
 
     while(true) {
          Node *prev = storage->first;
          if (prev == NULL || prev->next == NULL) {
-            fprintf(stderr, "warn: there are less, than two items in the value\n");
+            //printf(stderr, "warn: there are less, than two items in the value\n");
             continue;
          }
 
@@ -242,41 +242,38 @@ void* random_swap(void* args) {
 
          for (int i = 0; i < index; ++i) {
              pthread_mutex_lock(&(prev->sync));
-//             printf("lock previous node %d %p\n", context->thread, &(prev->sync));
+//             //printf("lock previous node %d %p\n", context->thread, &(prev->sync));
 
              if(prev->next == NULL) {
-//                 printf("NULL prev->next\n");
+//                 //printf("NULL prev->next\n");
                  pthread_mutex_unlock(&(prev->sync));
                  break;
              }
 
              pthread_mutex_lock(&(prev->next->sync));
-//             printf("lock current node %d %p\n", context->thread, &(prev->next->sync));
+//             //printf("lock current node %d %p\n", context->thread, &(prev->next->sync));
 
              if(prev->next->next == NULL) {
-//                 printf("NULL prev->next->next\n");
+//                 //printf("NULL prev->next->next\n");
                  pthread_mutex_unlock(&(prev->next->sync));
                  pthread_mutex_unlock(&(prev->sync));
                  break;
              }
 
              pthread_mutex_lock(&(prev->next->next->sync));
-             printf("lock future node %d %p\n", context->thread, &(prev->next->sync));
+             //printf("lock future node %d %p\n", context->thread, &(prev->next->sync));
              node = prev;
-             if(i == index - 1) swap_nodes(prev, current, future);
-             else {
                  prev = prev->next;
                  current = current->next;
                  future = future->next;
-             }
 
-//             printf("UNlock future node %d %p\n", context->thread, &(node->next->next->sync));
+//             //printf("UNlock future node %d %p\n", context->thread, &(node->next->next->sync));
              pthread_mutex_unlock(&(node->next->next->sync));
 
-//             printf("UNlock current node %d %p\n", context->thread, &(node->next->sync));
+//             //printf("UNlock current node %d %p\n", context->thread, &(node->next->sync));
              pthread_mutex_unlock(&(node->next->sync));
 
-//             printf("UNlock previous node %d %p\n", context->thread, &(node->sync));
+//             //printf("UNlock previous node %d %p\n", context->thread, &(node->sync));
              pthread_mutex_unlock(&(node->sync));
          }
 

@@ -266,12 +266,9 @@ void* random_swap(void* args) {
              pthread_spin_lock(&(prev->next->next->sync));
              printf("lock future node %d %p\n", context->thread, &(prev->next->sync));
              node = prev;
-             if(i == index - 1) swap_nodes(prev, current, future);
-             else {
-                 prev = prev->next;
-                 current = current->next;
-                 future = future->next;
-             }
+             prev = prev->next;
+             current = current->next;
+             future = future->next;
 
              printf("UNlock future node %d %p\n", context->thread, &(node->next->next->sync));
              pthread_spin_unlock(&(node->next->next->sync));
@@ -295,16 +292,16 @@ void join_thread(pthread_t tid) {
 
 void* monitor(void *arg) {
 	while (true) {
-//        printf("count INCREASING: %d,"
-//               " DECREASING %d, EQUALS %d,"
-//               " RANDOM_SWAP_1 %d,"
-//               " RANDOM_SWAP_2 %d,"
-//               " RANDOM_SWAP_3 %d\n", count_increment[INCREASING],
-//                                      count_increment[DECREASING],
-//                                      count_increment[EQUALS],
-//                                      count_increment[RANDOM_SWAP_1],
-//                                      count_increment[RANDOM_SWAP_2],
-//                                      count_increment[RANDOM_SWAP_3]);
+        printf("count INCREASING: %d,"
+               " DECREASING %d, EQUALS %d,"
+               " RANDOM_SWAP_1 %d,"
+               " RANDOM_SWAP_2 %d,"
+               " RANDOM_SWAP_3 %d\n", count_increment[INCREASING],
+                                      count_increment[DECREASING],
+                                      count_increment[EQUALS],
+                                      count_increment[RANDOM_SWAP_1],
+                                      count_increment[RANDOM_SWAP_2],
+                                      count_increment[RANDOM_SWAP_3]);
 		sleep(1);
 	}
 }
