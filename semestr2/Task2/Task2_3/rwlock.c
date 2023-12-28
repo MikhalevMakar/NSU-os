@@ -9,7 +9,7 @@
 
 enum {
     SIZE_WORD = 100,
-    SIZE_STORAGE = 10,
+    SIZE_STORAGE = 1000,
     COUNT_THREADS = 7,
     MIN_SIZE_LIST = 3,
 };
@@ -144,7 +144,6 @@ void* find_decreasing(void* args) {
         }
         while (true) {
             pthread_rwlock_rdlock(&(node->sync));
-//            printf("lock current node %d, %p\n", DECREASING, &(node->sync));
             tmp = node;
 
             next = node->next;
@@ -154,8 +153,6 @@ void* find_decreasing(void* args) {
             }
 
             pthread_rwlock_rdlock(&(next->sync));
-
-//            printf("lock future node %d, %p\n", DECREASING, &(next->sync));
 
             if (strlen(node->value) > strlen(next->value)) ++counter;
 
@@ -266,7 +263,6 @@ void* random_swap(void* args) {
              }
 
              pthread_rwlock_wrlock(&(prev->next->next->sync));
-//             printf("lock future node %d %p\n", context->thread, &(prev->next->sync));
              node = prev;
              if(i == index - 1) swap_nodes(prev, current, future);
              else {
@@ -275,13 +271,10 @@ void* random_swap(void* args) {
                  future = future->next;
              }
 
-//             printf("UNlock future node %d %p\n", context->thread, &(node->next->next->sync));
              pthread_rwlock_unlock(&(node->next->next->sync));
 
-//             printf("UNlock current node %d %p\n", context->thread, &(node->next->sync));
              pthread_rwlock_unlock(&(node->next->sync));
 
-//             printf("UNlock previous node %d %p\n", context->thread, &(node->sync));
              pthread_rwlock_unlock(&(node->sync));
          }
 

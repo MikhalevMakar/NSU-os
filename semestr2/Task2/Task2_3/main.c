@@ -9,7 +9,7 @@
 
 enum {
     SIZE_WORD = 100,
-    SIZE_STORAGE = 10,
+    SIZE_STORAGE = 1000,
     COUNT_THREADS = 7,
     MIN_SIZE_LIST = 3,
 };
