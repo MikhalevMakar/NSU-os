@@ -46,11 +46,11 @@ cmake_ninja_workdir = /Users/natasamihaleva/NSU_OS/semestr2/Task3/cmake-build-de
 
 build cmake_object_order_depends_target_task_3: phony || CMakeFiles/task_3.dir
 
-build CMakeFiles/task_3.dir/main.c.o: C_COMPILER__task_3_Debug /Users/natasamihaleva/NSU_OS/semestr2/Task3/main.c || cmake_object_order_depends_target_task_3
-  DEP_FILE = CMakeFiles/task_3.dir/main.c.o.d
-  FLAGS = -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -std=gnu11
+build CMakeFiles/task_3.dir/src/main.c.o: C_COMPILER__task_3_Debug /Users/natasamihaleva/NSU_OS/semestr2/Task3/src/main.c || cmake_object_order_depends_target_task_3
+  DEP_FILE = CMakeFiles/task_3.dir/src/main.c.o.d
+  FLAGS = -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -std=gnu11
   OBJECT_DIR = CMakeFiles/task_3.dir
-  OBJECT_FILE_DIR = CMakeFiles/task_3.dir
+  OBJECT_FILE_DIR = CMakeFiles/task_3.dir/src
   TARGET_COMPILE_PDB = CMakeFiles/task_3.dir/
   TARGET_PDB = task_3.pdb
 
@@ -62,8 +62,8 @@ build CMakeFiles/task_3.dir/main.c.o: C_COMPILER__task_3_Debug /Users/natasamiha
 #############################################
 # Link the executable task_3
 
-build task_3: C_EXECUTABLE_LINKER__task_3_Debug CMakeFiles/task_3.dir/main.c.o
-  FLAGS = -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk
+build task_3: C_EXECUTABLE_LINKER__task_3_Debug CMakeFiles/task_3.dir/src/main.c.o
+  FLAGS = -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk
   OBJECT_DIR = CMakeFiles/task_3.dir
   POST_BUILD = :
   PRE_LINK = :

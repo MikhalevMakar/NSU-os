@@ -747,7 +747,7 @@
 				}
 			],
 			"type" : "PATH",
-			"value" : "/Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk"
+			"value" : "/Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk"
 		},
 		{
 			"name" : "CMAKE_PLATFORM_INFO_INITIALIZED",
