@@ -19,7 +19,6 @@ pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 unsigned long hash(const char *str) {
     unsigned long hash = 0;
     while (*str != '\0') {
-        // hash * 33 + cur symbol
         hash = ((hash << 5) + hash) + (unsigned long) (*str);
         ++str;
     }

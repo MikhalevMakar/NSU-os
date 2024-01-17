@@ -68,6 +68,11 @@ void* execute_client_request(void *arg) {
     char request[MAX_BUFFER_SIZE];
     strcpy(request, request0);
 
+    if (send_from_cache(request, client_socket) == EXIT_SUCCESS) {
+        free(ctx->request);
+        close(client_socket);
+        return NULL;
+    }
     Cache *record = malloc(sizeof(Cache));
     init_cache_record(record);
     add_request(record, request0);
@@ -146,23 +151,17 @@ void accept_new_client(int server_socket) {
             continue;
         }
 
-        if (send_from_cache(request, client_socket) == EXIT_SUCCESS) {
-            free(request);
+        sem_wait(&thread_semaphore);
+        logg("Init new connection", PURPLE);
+        context ctx = {client_socket, request};
+        pthread_t handler_thread;
+        err = pthread_create(&handler_thread, NULL, execute_client_request, &ctx);
+        if (err == PTHREAD_ERROR) {
+            perror("Failed to create thread");
             close(client_socket);
-            continue;
-        } else {
-            sem_wait(&thread_semaphore);
-            logg("Init new connection", PURPLE);
-            context ctx = {client_socket, request};
-            pthread_t handler_thread;
-            err = pthread_create(&handler_thread, NULL, execute_client_request, &ctx);
-            if (err == PTHREAD_ERROR) {
-                perror("Failed to create thread");
-                close(client_socket);
-                close(server_socket);
-                destroy_cache();
-                exit(EXIT_FAILURE);
-            }
+            close(server_socket);
+            destroy_cache();
+            exit(EXIT_FAILURE);
         }
     }
 }

@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <netdb.h>
-#include "../header/logger.h"
 
 int create_server_socket() {
     struct sockaddr_in server_addr;
