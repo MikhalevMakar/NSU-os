@@ -55,7 +55,6 @@ void add_request(Cache *record, char *req) {
     unsigned long _hash = hash(req);
     logg_int("Current hash = ", _hash, YELLOW);
     record->request = _hash;
-
 }
 
 void add_response(Cache *record, char *resp, unsigned long cur_position, unsigned long resp_size) {

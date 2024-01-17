@@ -26,7 +26,7 @@
 Разумеется, при этом каждая из нитей в разные моменты времени будет вынуждена обрабатывать разные соединения. 
 Для управления соединениями используйте select или poll.
 
-Пример запроса: curl --http1.0 -i -x 127.0.0.1:80 http://www.google.com/
+Пример запроса: curl --http1.0 -i -x 127.0.0.1:90 http://www.google.com/
 
 ![./resources/architecture.png](./resources/architecture.png)
 
